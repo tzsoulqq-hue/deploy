@@ -45,6 +45,7 @@ configEnv:
   OUTLOOK_REGISTER_RUN_TIMEOUT_SECONDS: "900"
   OUTLOOK_REGISTER_LOCK_WAIT_SECONDS: "0"
   MAILBOX_REGISTER_TIMEOUT_SECONDS: "1800"
+  MAILBOX_EMAIL_SERVICE_TIMEOUT_SECONDS: "10"
 
   OUTLOOK_OAUTH_CLIENT_ID: ""
   OUTLOOK_OAUTH_SCOPE: "https://graph.microsoft.com/Mail.Read"
@@ -261,6 +262,7 @@ workloads:
       tag: latest
     env:
       LISTEN_ADDR: ":50051"
+      MAILBOX_EMAIL_SERVICE_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
     secretEnv:
       - name: OUTLOOK_REGISTER_PROXY
         key: OUTLOOK_REGISTER_PROXY
