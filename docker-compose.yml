@@ -151,7 +151,6 @@ services:
       - SMS_ADDR=${SMS_ADDR:-herosms-sms-service:50051}
       - ACCOUNT_DB_ADDR=account-db:50051
       - EMAIL_ADDR=outlook-imap-service:50051
-      - MAILBOX_REGISTER_ADDR=outlook-register-service:50051
       - OTP_ADDR=${OTP_ADDR:-otp-relay:50051}
       - GOPAY_OTP_SERVICE_ADDR=${GOPAY_OTP_SERVICE_ADDR:-otp-relay:50051}
       - GOPAY_OTP_TIMEOUT_SECONDS=${GOPAY_OTP_TIMEOUT_SECONDS:-180}

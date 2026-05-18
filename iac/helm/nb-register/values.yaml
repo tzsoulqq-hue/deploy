@@ -521,7 +521,6 @@ workloads:
       SMS_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "herosms-sms-service") }}:50051'
       ACCOUNT_DB_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "account-db") }}:50051'
       EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
-      MAILBOX_REGISTER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-register-service") }}:50051'
       OTP_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
       GOPAY_OTP_SERVICE_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
       TEMPORAL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'
