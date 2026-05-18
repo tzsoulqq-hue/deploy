@@ -290,6 +290,30 @@ workloads:
         sizeLimit: 2Gi
     resources: {}
 
+  mailbox-api:
+    enabled: true
+    replicas: 1
+    image:
+      repository: nb-register/mailbox-api
+      tag: latest
+    env:
+      LISTEN_ADDR: ":50051"
+      EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
+      MAILBOX_REGISTER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-register-service") }}:50051'
+    ports:
+      - name: grpc
+        containerPort: 50051
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: grpc
+          port: 50051
+          targetPort: grpc
+    probes:
+      tcpSocketPort: grpc
+    resources: {}
+
   browser-reg:
     enabled: true
     replicas: 1
@@ -549,6 +573,7 @@ workloads:
       LISTEN_ADDR: ":8080"
       ACCOUNT_DB_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "account-db") }}:50051'
       ORCHESTRATOR_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "orchestrator") }}:50051'
+      MAILBOX_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "mailbox-api") }}:50051'
       PAYMENT_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "gopay-payment") }}:50051'
       EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
       MAILBOX_REGISTER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-register-service") }}:50051'

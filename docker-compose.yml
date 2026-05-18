@@ -102,6 +102,21 @@ services:
     shm_size: "2gb"
     restart: always
 
+  mailbox-api:
+    build:
+      context: .
+      dockerfile: services/mailbox-api/Dockerfile
+    ports:
+      - "${MAILBOX_API_GRPC_PORT:-50057}:50051"
+    environment:
+      - LISTEN_ADDR=:50051
+      - EMAIL_ADDR=outlook-imap-service:50051
+      - MAILBOX_REGISTER_ADDR=outlook-register-service:50051
+    depends_on:
+      - outlook-imap-service
+      - outlook-register-service
+    restart: always
+
   account-db:
     build:
       context: .
@@ -320,6 +335,7 @@ services:
       - LISTEN_ADDR=:8080
       - ACCOUNT_DB_ADDR=account-db:50051
       - ORCHESTRATOR_ADDR=orchestrator:50051
+      - MAILBOX_ADDR=mailbox-api:50051
       - PAYMENT_ADDR=gopay-payment:50051
       - EMAIL_ADDR=outlook-imap-service:50051
       - MAILBOX_REGISTER_ADDR=outlook-register-service:50051
@@ -327,6 +343,7 @@ services:
     depends_on:
       - account-db
       - orchestrator
+      - mailbox-api
       - gopay-payment
       - outlook-imap-service
       - outlook-register-service

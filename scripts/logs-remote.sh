@@ -29,6 +29,7 @@ ALL_SERVICES=(
   orchestrator
   outlook-imap-service
   outlook-register-service
+  mailbox-api
   otp-relay
   temporal
   postgres
@@ -49,7 +50,7 @@ Examples:
 Services:
   account-db browser-reg dashboard gopay-app gopay-payment
   herosms-sms-service orchestrator outlook-imap-service
-  outlook-register-service otp-relay temporal postgres
+  outlook-register-service mailbox-api otp-relay temporal postgres
 
 Options:
   -f, --follow              Follow logs.
@@ -94,7 +95,7 @@ join_by_comma() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|dashboard|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|otp-relay|temporal|postgres)
+    account-db|browser-reg|dashboard|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay|temporal|postgres)
       return 0
       ;;
     *)

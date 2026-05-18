@@ -24,6 +24,10 @@ workloads:
     image:
       repository: outlook-register-service
       tag: dev
+  mailbox-api:
+    image:
+      repository: mailbox-api
+      tag: dev
   browser-reg:
     image:
       repository: browser-reg
