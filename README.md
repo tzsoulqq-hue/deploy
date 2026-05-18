@@ -1,29 +1,35 @@
-# base-images
+# Deploy
 
-Byte V Forge 服务共享的容器基础镜像定义仓。
+本仓承载 nb-register 的部署入口、IaC、环境示例和部署辅助脚本。
 
-## 职责
+## 目录
 
-- 维护通用构建镜像和运行时镜像模板。
-- 为业务镜像提供 Go、Node 和浏览器自动化运行时基础。
-- 业务镜像可以基于本仓模板构建。
-- 实际镜像构建目标为约定的远程构建环境或 CI。
+- `docker-compose.yml`：本地或远程 Docker Compose 部署入口。
+- `.env.example`：部署变量示例。
+- `iac/helm/nb-register/`：Kubernetes Helm chart。
+- `scripts/deploy-remote.sh`：远程构建、导入镜像和 Helm 升级脚本。
+- `scripts/logs-remote.sh`：远程 Kubernetes 日志查看脚本。
+- `docker/camoufox-base/`：浏览器注册运行所需基础镜像。
+- `images/`：共享基础镜像定义。
 
-## 镜像目录
-
-- `images/go-builder`：Go 构建环境。
-- `images/go-runtime`：Go 服务运行时基础镜像。
-- `images/node-builder`：前端构建环境。
-- `images/browser-runtime`：浏览器自动化运行时基础镜像。
-
-## 版本策略
-
-镜像默认使用 `versions.env` 中的最新稳定/LTS 主线。升级时需要同步更新 README、CI 和构建命令示例。
-
-## 验证
+## Helm 渲染
 
 ```sh
-docker buildx bake --file docker-bake.hcl --print
+helm lint iac/helm/nb-register
+helm template nb-register iac/helm/nb-register --namespace nb-register >/tmp/nb-register.yaml
 ```
 
-CI 会验证 Dockerfile 可解析，并执行本地构建检查。
+## 远程部署
+
+```sh
+scripts/deploy-remote.sh all
+```
+
+部署脚本默认使用远程宿主机和 `nb-register` Helm release，可通过脚本参数或环境变量覆盖。
+
+## 日志
+
+```sh
+scripts/logs-remote.sh orchestrator
+scripts/logs-remote.sh -f all
+```
