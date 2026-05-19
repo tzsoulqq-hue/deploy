@@ -44,7 +44,6 @@ configEnv:
   OUTLOOK_REGISTER_INTERVAL_SECONDS: "0"
   OUTLOOK_REGISTER_RUN_TIMEOUT_SECONDS: "900"
   OUTLOOK_REGISTER_LOCK_WAIT_SECONDS: "0"
-  MAILBOX_REGISTER_TIMEOUT_SECONDS: "1800"
   MAILBOX_EMAIL_SERVICE_TIMEOUT_SECONDS: "10"
 
   OUTLOOK_OAUTH_CLIENT_ID: ""
@@ -92,6 +91,7 @@ configEnv:
   TEMPORAL_DEV_SERVER: "false"
   TEMPORAL_NAMESPACE: default
   TEMPORAL_TASK_QUEUE: nb-register-orchestrator
+  MAILBOX_TEMPORAL_TASK_QUEUE: nb-register-mailbox-api
   REGISTRATION_OTP_TIMEOUT_SECONDS: "180"
 
 secrets:
@@ -302,6 +302,10 @@ workloads:
       MAILBOX_API_PG_DSN: '{{ include "nb-register.pgDsn" . }}'
       EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
       MAILBOX_REGISTER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-register-service") }}:50051'
+      TEMPORAL_ADDRESS: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'
+      TEMPORAL_NAMESPACE: '{{ .Values.configEnv.TEMPORAL_NAMESPACE }}'
+      TEMPORAL_TASK_QUEUE: '{{ .Values.configEnv.MAILBOX_TEMPORAL_TASK_QUEUE }}'
+      TEMPORAL_IDENTITY: mailbox-api
     ports:
       - name: grpc
         containerPort: 50051
