@@ -585,7 +585,6 @@ workloads:
       SMS_POLL_INTERVAL_SECONDS: '{{ .Values.configEnv.SMS_POLL_INTERVAL_SECONDS }}'
       ACCOUNT_DB_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "account-db") }}:50051'
       MAILBOX_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "mailbox-api") }}:50051'
-      OTP_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
       GOPAY_OTP_SERVICE_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
       TEMPORAL_ADDRESS: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'
       TEMPORAL_NAMESPACE: '{{ .Values.configEnv.TEMPORAL_NAMESPACE }}'
