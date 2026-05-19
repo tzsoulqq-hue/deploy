@@ -22,6 +22,7 @@ configEnv:
   GPT_WORKFLOW_RUNTIME_TASK_QUEUE: byte-v-forge-gpt-service
   MAILBOX_WORKFLOW_RUNTIME_TASK_QUEUE: byte-v-forge-mailbox-service
   MAILBOX_WEBHOOK_HTTP_ADDR: ":8082"
+  MAILBOX_CLOUDFLARE_DOMAINS: ""
   SMS_PROVIDER: herosms
   SMS_PROVIDER_COUNTRY_ID: "6"
   SMS_UPSTREAM_SERVICE_KEY: ni
@@ -223,6 +224,7 @@ workloads:
       MAILBOX_LISTEN_ADDR: ":50051"
       MAILBOX_OUTLOOK_INTERNAL_ADDR: "127.0.0.1:50052"
       MAILBOX_WEBHOOK_HTTP_ADDR: '{{ .Values.configEnv.MAILBOX_WEBHOOK_HTTP_ADDR }}'
+      MAILBOX_CLOUDFLARE_DOMAINS: '{{ .Values.configEnv.MAILBOX_CLOUDFLARE_DOMAINS }}'
       MAILBOX_PG_DSN: '{{ include "byte-v-forge.pgDsn" . }}'
       BROWSER_AUTOMATION_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "browser-automation") }}:50051'
       WORKFLOW_RUNTIME_ADDRESS: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime") }}:7233'

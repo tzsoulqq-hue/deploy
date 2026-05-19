@@ -3,6 +3,9 @@ global:
   imagePullPolicy: IfNotPresent
   imagePullSecrets: []
 
+configEnv:
+  MAILBOX_CLOUDFLARE_DOMAINS: example.invalid
+
 workloads:
   gpt-service:
     image:
