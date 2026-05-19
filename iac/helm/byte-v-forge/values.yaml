@@ -33,8 +33,8 @@ secrets:
   stringData:
     POSTGRES_PASSWORD: byte_v_forge
     BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
+    INGRESS_FRPC_CONFIG: ""
     MAILBOX_WEBHOOK_TOKEN: ""
-    MAILBOX_FRPC_CONFIG: ""
     SMS_PROVIDER_API_KEY: ""
     SMS_HTTP_PROXY: ""
     GOPAY_PHONE_NUMBER: ""
@@ -99,10 +99,20 @@ ingress:
     className: ""
     annotations: {}
     hosts:
-      - host: byte-v-forge-webhook.local
+      - host: webhook.byte-v-forge.local
         paths:
+          - path: /webhooks/email
+            pathType: Prefix
+            component: mailbox
+            portName: http-webhook
+          - path: /webhooks/microsoft-graph
+            pathType: Prefix
+            component: mailbox
+            portName: http-webhook
           - path: /
             pathType: Prefix
+            component: gpt-service
+            portName: http-webhook
     tls: []
 
 workloads:
@@ -136,6 +146,30 @@ workloads:
       httpGet:
         path: /healthz
         port: health
+    resources: {}
+
+  ingress-frpc:
+    enabled: false
+    replicas: 1
+    image:
+      repository: docker.m.daocloud.io/fatedier/frpc
+      tag: v0.61.1
+    command:
+      - frpc
+    args:
+      - -c
+      - /etc/frp/frpc.toml
+    volumeMounts:
+      - name: frpc-config
+        mountPath: /etc/frp
+        readOnly: true
+    volumes:
+      - name: frpc-config
+        type: secret
+        secretName: '{{ include "byte-v-forge.appSecretName" . }}'
+        items:
+          - key: INGRESS_FRPC_CONFIG
+            path: frpc.toml
     resources: {}
 
   browser-automation:
@@ -198,8 +232,6 @@ workloads:
     secretEnv:
       - name: MAILBOX_WEBHOOK_TOKEN
         key: MAILBOX_WEBHOOK_TOKEN
-      - name: MAILBOX_FRPC_CONFIG
-        key: MAILBOX_FRPC_CONFIG
     ports:
       - name: grpc
         containerPort: 50051

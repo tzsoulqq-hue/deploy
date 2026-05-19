@@ -10,7 +10,7 @@
 - `scripts/deploy-remote.sh`：远程构建、导入镜像和 Helm 升级脚本。
 - `scripts/logs-remote.sh`：远程 Kubernetes 日志查看脚本。
 
-mailbox 的 Cloudflare Email Routing webhook 由 mailbox workload 内置 HTTP 入口提供，`MAILBOX_WEBHOOK_TOKEN` 用于 Worker 转发鉴权。需要从公网接入时，mailbox 镜像内置 frpc，可通过 `MAILBOX_FRPC_CONFIG` 写入配置并自动启动。
+WebUI、mailbox webhook 和 GoPay OTP webhook 的外部 HTTP 入口通过 Helm `ingress` 配置。`ingress.webhook` 按路径把 `/webhooks/email`、`/webhooks/microsoft-graph` 分发到 mailbox，把 GoPay OTP 路径分发到 gpt-service。公网隧道可启用 `workloads.ingress-frpc`，并通过 `INGRESS_FRPC_CONFIG` 指向 ingress-nginx HTTP 入口。
 
 ## Helm 渲染
 

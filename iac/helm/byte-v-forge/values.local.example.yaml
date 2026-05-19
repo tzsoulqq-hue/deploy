@@ -28,6 +28,8 @@ workloads:
     image:
       repository: webui
       tag: dev
+  ingress-frpc:
+    enabled: false
 
 ingress:
   webui:
@@ -42,15 +44,26 @@ ingress:
     enabled: true
     className: nginx
     hosts:
-      - host: byte-v-forge-webhook.example.internal
+      - host: webhook.byte-v-forge.example.internal
         paths:
+          - path: /webhooks/email
+            pathType: Prefix
+            component: mailbox
+            portName: http-webhook
+          - path: /webhooks/microsoft-graph
+            pathType: Prefix
+            component: mailbox
+            portName: http-webhook
           - path: /
             pathType: Prefix
+            component: gpt-service
+            portName: http-webhook
 
 secrets:
   stringData:
     POSTGRES_PASSWORD: change-me
     BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
+    INGRESS_FRPC_CONFIG: ""
     SMS_PROVIDER_API_KEY: ""
     SMS_HTTP_PROXY: ""
     GOPAY_PHONE_NUMBER: ""

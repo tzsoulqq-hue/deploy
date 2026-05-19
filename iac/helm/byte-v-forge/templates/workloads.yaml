@@ -65,6 +65,7 @@ spec:
               protocol: {{ default "TCP" .protocol }}
             {{- end }}
           {{- end }}
+          {{- if or $workload.postgresEnv $workload.env $workload.secretEnv }}
           env:
             {{- if $workload.postgresEnv }}
             - name: POSTGRES_USER
@@ -88,6 +89,7 @@ spec:
                   name: {{ include "byte-v-forge.appSecretName" $ }}
                   key: {{ default $item.name $item.key }}
             {{- end }}
+          {{- end }}
           {{- with $workload.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}

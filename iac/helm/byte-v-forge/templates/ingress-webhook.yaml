@@ -27,9 +27,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "byte-v-forge.componentFullname" (dict "root" $ "component" "gpt-service") }}
+                name: {{ include "byte-v-forge.componentFullname" (dict "root" $ "component" (default "gpt-service" .component)) }}
                 port:
-                  name: http-webhook
+                  name: {{ default "http-webhook" .portName | quote }}
           {{- end }}
     {{- end }}
 {{- end }}

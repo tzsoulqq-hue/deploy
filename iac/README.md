@@ -16,7 +16,8 @@ iac/
 - `configEnv`：非敏感运行参数，渲染为 ConfigMap。
 - `secrets.stringData`：敏感参数，渲染为 Secret。
 - `workloads`：每个服务的镜像、端口、探针、挂载和副本数。
-- `ingress`：WebUI 和 OTP webhook 的外部入口。
+- `ingress`：WebUI、mailbox webhook 和 GoPay OTP webhook 的外部入口。
+- `workloads.ingress-frpc`：面向 ingress-nginx HTTP 入口的可选公网隧道。
 
 Kubernetes 部署中的代理地址使用集群可达的 Service、内网 IP 或 egress proxy。
 
