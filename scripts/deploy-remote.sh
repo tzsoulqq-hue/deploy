@@ -6,7 +6,7 @@ DEPLOY_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 SOURCE_ROOT=${SOURCE_ROOT:-$(cd -- "$DEPLOY_DIR/.." && pwd)}
 REMOTE_HOST=${REMOTE_HOST:-pood1e@192.168.0.126}
 REMOTE_DIR=${REMOTE_DIR:-/tmp/byte-v-forge-build-src}
-REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/byte-v-forge-business.yaml}
+REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/byte-v-forge.yaml}
 REMOTE_HELM=${REMOTE_HELM:-/home/pood1e/.local/bin/helm}
 RELEASE=${RELEASE:-byte-v-forge}
 NAMESPACE=${NAMESPACE:-byte-v-forge}
@@ -23,7 +23,7 @@ HELM_TIMEOUT=${HELM_TIMEOUT:-10m}
 ROLLOUT_TIMEOUT=${ROLLOUT_TIMEOUT:-5m}
 
 IMPORT_METHOD=${IMPORT_METHOD:-auto}
-VM_NAME=${VM_NAME:-byte-v-forge-business-1}
+VM_NAME=${VM_NAME:-byte-v-forge-1}
 IMPORT_HOST_IP=${IMPORT_HOST_IP:-192.168.122.1}
 IMPORT_HTTP_BIND=${IMPORT_HTTP_BIND:-$IMPORT_HOST_IP}
 IMPORT_HTTP_PORT=${IMPORT_HTTP_PORT:-31888}

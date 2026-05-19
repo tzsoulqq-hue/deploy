@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 REMOTE_HOST=${REMOTE_HOST:-pood1e@192.168.0.126}
-REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/byte-v-forge-business.yaml}
+REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/byte-v-forge.yaml}
 RELEASE=${RELEASE:-byte-v-forge}
 NAMESPACE=${NAMESPACE:-byte-v-forge}
 
