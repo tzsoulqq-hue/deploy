@@ -1,16 +1,6 @@
 name: byte-v-forge
 
 services:
-  camoufox-base:
-    image: byte-v-forge-camoufox-base:latest
-    build:
-      context: ./docker/camoufox-base
-      dockerfile: Dockerfile
-      args:
-        CAMOUFOX_FETCH_PROXY: ${CAMOUFOX_FETCH_PROXY:-http://host.docker.internal:10809}
-    profiles:
-      - build
-
   postgres:
     image: docker.m.daocloud.io/library/postgres:15-alpine
     environment:
@@ -57,6 +47,10 @@ services:
     build:
       context: ../browser-automation
       dockerfile: Dockerfile
+      args:
+        CAMOUFOX_FETCH_PROXY: ${CAMOUFOX_FETCH_PROXY:-}
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
     init: true
     ports:
       - "127.0.0.1:${BROWSER_AUTOMATION_GRPC_PORT:-50062}:50051"

@@ -9,8 +9,6 @@
 - `iac/helm/byte-v-forge/`：Kubernetes Helm chart。
 - `scripts/deploy-remote.sh`：远程构建、导入镜像和 Helm 升级脚本。
 - `scripts/logs-remote.sh`：远程 Kubernetes 日志查看脚本。
-- `docker/camoufox-base/`：browser-automation 运行所需基础镜像。
-- `images/`：共享基础镜像定义。
 
 mailbox 的 Cloudflare Email Routing webhook 由 mailbox workload 内置 HTTP 入口提供，`MAILBOX_WEBHOOK_TOKEN` 用于 Worker 转发鉴权。需要从公网接入时，mailbox 镜像内置 frpc，可通过 `MAILBOX_FRPC_CONFIG` 写入配置并自动启动。
 

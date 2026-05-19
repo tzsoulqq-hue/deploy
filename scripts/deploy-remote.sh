@@ -29,9 +29,7 @@ IMPORT_HTTP_BIND=${IMPORT_HTTP_BIND:-$IMPORT_HOST_IP}
 IMPORT_HTTP_PORT=${IMPORT_HTTP_PORT:-31888}
 IMPORT_TIMEOUT_SECONDS=${IMPORT_TIMEOUT_SECONDS:-600}
 
-BUILD_CAMOUFOX_BASE=${BUILD_CAMOUFOX_BASE:-auto}
-CAMOUFOX_FETCH_PROXY=${CAMOUFOX_FETCH_PROXY:-http://host.docker.internal:10809}
-CAMOUFOX_BASE_BUILD_FLAGS=${CAMOUFOX_BASE_BUILD_FLAGS:---add-host=host.docker.internal:host-gateway}
+CAMOUFOX_FETCH_PROXY=${CAMOUFOX_FETCH_PROXY:-}
 SKIP_SYNC=${SKIP_SYNC:-false}
 SKIP_BUILD=${SKIP_BUILD:-false}
 SKIP_IMPORT=${SKIP_IMPORT:-false}
@@ -72,14 +70,13 @@ Options:
   --skip-import             Do not import images into the k3s node.
   --skip-helm               Do not run Helm upgrade.
   --skip-validate           Do not run helm lint/template before upgrade.
-  --build-camoufox-base MODE  auto|always|never. Default: auto.
   -h, --help                Show this help.
 
 Environment overrides:
   REMOTE_KUBECONFIG, REMOTE_HELM, IMAGE_PREFIX, IMPORT_METHOD, VM_NAME,
   IMPORT_HOST_IP, IMPORT_HTTP_BIND, IMPORT_HTTP_PORT, HELM_TIMEOUT,
   ROLLOUT_TIMEOUT, KEEP_REMOTE_TAR, SOURCE_ROOT, CAMOUFOX_FETCH_PROXY,
-  CAMOUFOX_BASE_BUILD_FLAGS.
+  VALUES_FILE.
 EOF
 }
 
@@ -103,17 +100,6 @@ remote() {
 valid_service() {
   case "$1" in
     browser-automation|workflow-runtime|webui|gpt-service|mailbox|sms-service)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
-needs_camoufox_base() {
-  case "$1" in
-    browser-automation)
       return 0
       ;;
     *)
@@ -260,11 +246,6 @@ parse_args() {
         SKIP_VALIDATE=true
         shift
         ;;
-      --build-camoufox-base)
-        [[ $# -ge 2 ]] || die "--build-camoufox-base requires auto|always|never"
-        BUILD_CAMOUFOX_BASE=$2
-        shift 2
-        ;;
       -h|--help)
         usage
         exit 0
@@ -285,11 +266,6 @@ parse_args() {
         ;;
     esac
   done
-
-  case "$BUILD_CAMOUFOX_BASE" in
-    auto|always|never) ;;
-    *) die "--build-camoufox-base must be auto, always, or never" ;;
-  esac
 
   case "$IMPORT_METHOD" in
     auto|sudo|qga) ;;
@@ -354,40 +330,13 @@ sync_source() {
   sync_one_repo workflow-runtime "$SOURCE_ROOT/workflow-runtime" "$REMOTE_DIR/workflow-runtime"
 }
 
-build_camoufox_base_if_needed() {
-  if [[ "$SKIP_BUILD" == "true" ]]; then
-    return
-  fi
-
-  local should_build=false
-  if [[ "$BUILD_CAMOUFOX_BASE" == "always" ]]; then
-    should_build=true
-  elif [[ "$BUILD_CAMOUFOX_BASE" == "auto" ]]; then
-    for service in "${SERVICES[@]}"; do
-      if needs_camoufox_base "$service"; then
-        should_build=true
-        break
-      fi
-    done
-  fi
-
-  if [[ "$should_build" != "true" ]]; then
-    return
-  fi
-
-  log "build byte-v-forge-camoufox-base:latest"
-  remote "cd $(shell_quote "$REMOTE_DIR") && docker build $CAMOUFOX_BASE_BUILD_FLAGS --build-arg CAMOUFOX_FETCH_PROXY=$(shell_quote "$CAMOUFOX_FETCH_PROXY") -t byte-v-forge-camoufox-base:latest -f docker/camoufox-base/Dockerfile docker/camoufox-base"
-}
-
 build_images() {
   if [[ "$SKIP_BUILD" == "true" ]]; then
     log "skip build"
     return
   fi
 
-  build_camoufox_base_if_needed
-
-  local service context dockerfile dockerfile_arg image
+  local service context dockerfile dockerfile_arg image build_flags
   for service in "${SERVICES[@]}"; do
     context=$(docker_context "$service")
     dockerfile=$(dockerfile_path "$service")
@@ -396,8 +345,12 @@ build_images() {
       dockerfile_arg=$context/$dockerfile
     fi
     image=$(image_ref "$service")
+    build_flags=""
+    if [[ "$service" == "browser-automation" && -n "$CAMOUFOX_FETCH_PROXY" ]]; then
+      build_flags="--add-host=host.docker.internal:host-gateway --build-arg CAMOUFOX_FETCH_PROXY=$(shell_quote "$CAMOUFOX_FETCH_PROXY")"
+    fi
     log "build $image"
-    remote "cd $(shell_quote "$REMOTE_DIR") && docker build -t $(shell_quote "$image") -f $(shell_quote "$dockerfile_arg") $(shell_quote "$context")"
+    remote "cd $(shell_quote "$REMOTE_DIR") && docker build $build_flags -t $(shell_quote "$image") -f $(shell_quote "$dockerfile_arg") $(shell_quote "$context")"
   done
 }
 

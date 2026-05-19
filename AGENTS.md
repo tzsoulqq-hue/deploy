@@ -2,7 +2,7 @@
 
 本仓是 `deploy` 部署仓。
 
-- 本仓承载 Docker Compose、Helm chart、部署 values、环境示例、部署脚本和基础镜像定义。
+- 本仓承载 Docker Compose、Helm chart、部署 values、环境示例和部署脚本。
 - 不提交真实 secret、真实账号、真实 token、真实代理凭据或真实会话材料。
 - `.env.example` 和 values 示例只放占位值或虚构值。
 - Helm 变更需要通过 `helm lint` 和 `helm template` 做非测试类检查。
