@@ -191,10 +191,10 @@ services:
       - GOPAY_ADD_BALANCE_REKBERINAJA_ORIGIN=${GOPAY_ADD_BALANCE_REKBERINAJA_ORIGIN:-https://rekberinaja.com}
       - GOPAY_ADD_BALANCE_REKBERINAJA_REFERER=${GOPAY_ADD_BALANCE_REKBERINAJA_REFERER:-https://rekberinaja.com/}
       - GOPAY_ADD_BALANCE_CONFIRM_TIMEOUT_SECONDS=${GOPAY_ADD_BALANCE_CONFIRM_TIMEOUT_SECONDS:-1800}
-      - TEMPORAL_DEV_SERVER=false
-      - TEMPORAL_ADDR=temporal:7233
+      - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
       - TEMPORAL_TASK_QUEUE=${TEMPORAL_TASK_QUEUE:-nb-register-orchestrator}
+      - TEMPORAL_IDENTITY=gpt-orchestrator
       - ORCHESTRATOR_PG_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
     extra_hosts:
       - "host.docker.internal:host-gateway"

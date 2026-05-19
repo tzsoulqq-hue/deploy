@@ -88,7 +88,6 @@ configEnv:
   HEROSMS_COUNTRY_CALLING_CODE: "62"
   HEROSMS_MAX_PRICE: "0.05"
 
-  TEMPORAL_DEV_SERVER: "false"
   TEMPORAL_NAMESPACE: default
   TEMPORAL_TASK_QUEUE: nb-register-orchestrator
   MAILBOX_TEMPORAL_TASK_QUEUE: nb-register-mailbox-api
@@ -529,7 +528,10 @@ workloads:
       EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
       OTP_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
       GOPAY_OTP_SERVICE_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
-      TEMPORAL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'
+      TEMPORAL_ADDRESS: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'
+      TEMPORAL_NAMESPACE: '{{ .Values.configEnv.TEMPORAL_NAMESPACE }}'
+      TEMPORAL_TASK_QUEUE: '{{ .Values.configEnv.TEMPORAL_TASK_QUEUE }}'
+      TEMPORAL_IDENTITY: gpt-orchestrator
       ORCHESTRATOR_PG_DSN: '{{ include "nb-register.pgDsn" . }}'
     secretEnv:
       - name: GOPAY_PHONE_NUMBER
