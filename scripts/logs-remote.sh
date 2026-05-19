@@ -21,7 +21,6 @@ LIST_PODS=${LIST_PODS:-false}
 
 ALL_SERVICES=(
   account-db
-  browser-reg
   browser-automation
   webui
   gopay-app
@@ -29,7 +28,6 @@ ALL_SERVICES=(
   sms-service
   orchestrator
   outlook-imap-service
-  outlook-register-service
   mailbox-api
   temporal
   postgres
@@ -44,13 +42,13 @@ Examples:
   scripts/logs-remote.sh webui
   scripts/logs-remote.sh -f orchestrator gopay-app
   scripts/logs-remote.sh --since 30m --tail 500 gopay-payment
-  scripts/logs-remote.sh --previous browser-reg
+  scripts/logs-remote.sh --previous browser-automation
   scripts/logs-remote.sh --list-pods all
 
 Services:
-  account-db browser-reg browser-automation webui gopay-app gopay-payment
+  account-db browser-automation webui gopay-app gopay-payment
   sms-service orchestrator outlook-imap-service
-  outlook-register-service mailbox-api temporal postgres
+  mailbox-api temporal postgres
 
 Options:
   -f, --follow              Follow logs.
@@ -95,7 +93,7 @@ join_by_comma() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|temporal|postgres)
+    account-db|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|mailbox-api|temporal|postgres)
       return 0
       ;;
     *)

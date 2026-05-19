@@ -20,17 +20,9 @@ workloads:
     image:
       repository: outlook-imap-service
       tag: dev
-  outlook-register-service:
-    image:
-      repository: outlook-register-service
-      tag: dev
   mailbox-api:
     image:
       repository: mailbox-api
-      tag: dev
-  browser-reg:
-    image:
-      repository: browser-reg
       tag: dev
   browser-automation:
     image:
@@ -69,8 +61,7 @@ ingress:
 secrets:
   stringData:
     POSTGRES_PASSWORD: change-me
-    REGISTER_PROXY_URL: socks5://proxy.internal:10813
-    OUTLOOK_REGISTER_PROXY: socks5://proxy.internal:10810
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
     GOPAY_PHONE_NUMBER: ""
     GOPAY_WA_PHONE_NUMBER: ""
     GOPAY_PIN: ""

@@ -9,7 +9,7 @@
 - `iac/helm/nb-register/`：Kubernetes Helm chart。
 - `scripts/deploy-remote.sh`：远程构建、导入镜像和 Helm 升级脚本。
 - `scripts/logs-remote.sh`：远程 Kubernetes 日志查看脚本。
-- `docker/camoufox-base/`：浏览器注册运行所需基础镜像。
+- `docker/camoufox-base/`：browser-automation 运行所需基础镜像。
 - `images/`：共享基础镜像定义。
 
 ## Helm 渲染

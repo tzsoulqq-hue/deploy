@@ -41,7 +41,6 @@ KEEP_REMOTE_TAR=${KEEP_REMOTE_TAR:-false}
 
 ALL_SERVICES=(
   account-db
-  browser-reg
   browser-automation
   webui
   gopay-app
@@ -49,7 +48,6 @@ ALL_SERVICES=(
   sms-service
   orchestrator
   outlook-imap-service
-  outlook-register-service
   mailbox-api
 )
 
@@ -107,7 +105,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api)
+    account-db|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|mailbox-api)
       return 0
       ;;
     *)
@@ -118,7 +116,7 @@ valid_service() {
 
 needs_camoufox_base() {
   case "$1" in
-    browser-reg|browser-automation|outlook-register-service)
+    browser-automation)
       return 0
       ;;
     *)
@@ -129,10 +127,10 @@ needs_camoufox_base() {
 
 docker_context() {
   case "$1" in
-    account-db|browser-reg|gopay-app|gopay-payment|orchestrator)
+    account-db|gopay-app|gopay-payment|orchestrator)
       printf 'gpt'
       ;;
-    outlook-imap-service|outlook-register-service|mailbox-api)
+    outlook-imap-service|mailbox-api)
       printf 'mailbox'
       ;;
     webui)
@@ -149,9 +147,6 @@ docker_context() {
 
 dockerfile_path() {
   case "$1" in
-    browser-reg)
-      printf 'registration/browser-reg/Dockerfile'
-      ;;
     gopay-app)
       printf 'channels/gopay/app/Dockerfile'
       ;;
@@ -160,9 +155,6 @@ dockerfile_path() {
       ;;
     outlook-imap-service)
       printf 'providers/outlook/imap-service/Dockerfile'
-      ;;
-    outlook-register-service)
-      printf 'providers/outlook/register-service/Dockerfile'
       ;;
     mailbox-api)
       printf 'services/mailbox-api/Dockerfile'
