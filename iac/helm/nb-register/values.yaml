@@ -83,10 +83,18 @@ configEnv:
   OTP_RELAY_TTL_SECONDS: "600"
   OTP_RELAY_MAX_ITEMS: "100"
 
-  HEROSMS_SERVICE: ni
-  HEROSMS_COUNTRY: "6"
-  HEROSMS_COUNTRY_CALLING_CODE: "62"
-  HEROSMS_MAX_PRICE: "0.05"
+  SMS_PROVIDER: herosms
+  SMS_PROVIDER_ENDPOINT: https://hero-sms.com/stubs/handler_api.php
+  SMS_APPLICATION_KEY: gopay
+  SMS_COUNTRY_ISO2: ID
+  SMS_COUNTRY_CALLING_CODE: "62"
+  SMS_PROVIDER_COUNTRY_ID: "6"
+  SMS_UPSTREAM_SERVICE_KEY: ni
+  SMS_MAX_PRICE_DECIMAL: "0.05"
+  SMS_MAX_PRICE_CURRENCY: ""
+  SMS_HTTP_TIMEOUT_SECONDS: "20"
+  SMS_LEASE_SECONDS: "1200"
+  SMS_POLL_INTERVAL_SECONDS: "5"
 
   TEMPORAL_NAMESPACE: default
   TEMPORAL_TASK_QUEUE: nb-register-orchestrator
@@ -128,8 +136,8 @@ secrets:
     GOPAY_SCREEN: ""
     GOPAY_D1: ""
 
-    HEROSMS_API_KEY: ""
-    SMS_PROXY: ""
+    SMS_PROVIDER_API_KEY: ""
+    SMS_HTTP_PROXY: ""
 
 postgres:
   enabled: true
@@ -451,21 +459,19 @@ workloads:
             path: config.json
     resources: {}
 
-  herosms-sms-service:
+  sms-service:
     enabled: true
     replicas: 1
     image:
-      repository: nb-register/herosms-sms-service
+      repository: nb-register/sms-service
       tag: latest
-    postgresEnv: true
     env:
-      SMS_PORT: "50051"
-      PG_DSN: '{{ include "nb-register.pgDsn" . }}'
+      SMS_LISTEN_ADDR: ":50051"
     secretEnv:
-      - name: HEROSMS_API_KEY
-        key: HEROSMS_API_KEY
-      - name: SMS_PROXY
-        key: SMS_PROXY
+      - name: SMS_PROVIDER_API_KEY
+        key: SMS_PROVIDER_API_KEY
+      - name: SMS_HTTP_PROXY
+        key: SMS_HTTP_PROXY
     ports:
       - name: grpc
         containerPort: 50051
@@ -522,7 +528,14 @@ workloads:
       BROWSER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "browser-reg") }}:50051'
       PAYMENT_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "gopay-payment") }}:50051'
       GOPAY_APP_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "gopay-app") }}:50051'
-      SMS_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "herosms-sms-service") }}:50051'
+      SMS_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "sms-service") }}:50051'
+      SMS_APPLICATION_KEY: '{{ .Values.configEnv.SMS_APPLICATION_KEY }}'
+      SMS_COUNTRY_ISO2: '{{ .Values.configEnv.SMS_COUNTRY_ISO2 }}'
+      SMS_COUNTRY_CALLING_CODE: '{{ .Values.configEnv.SMS_COUNTRY_CALLING_CODE }}'
+      SMS_MAX_PRICE_DECIMAL: '{{ .Values.configEnv.SMS_MAX_PRICE_DECIMAL }}'
+      SMS_MAX_PRICE_CURRENCY: '{{ .Values.configEnv.SMS_MAX_PRICE_CURRENCY }}'
+      SMS_LEASE_SECONDS: '{{ .Values.configEnv.SMS_LEASE_SECONDS }}'
+      SMS_POLL_INTERVAL_SECONDS: '{{ .Values.configEnv.SMS_POLL_INTERVAL_SECONDS }}'
       ACCOUNT_DB_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "account-db") }}:50051'
       MAILBOX_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "mailbox-api") }}:50051'
       OTP_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'

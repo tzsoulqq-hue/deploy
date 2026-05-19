@@ -155,7 +155,14 @@ services:
       - GOPAY_PHONE_NUMBER=${GOPAY_PHONE_NUMBER}
       - GOPAY_WA_PHONE_NUMBER=${GOPAY_WA_PHONE_NUMBER}
       - GOPAY_PIN=${GOPAY_PIN}
-      - SMS_ADDR=${SMS_ADDR:-herosms-sms-service:50051}
+      - SMS_ADDR=${SMS_ADDR:-sms-service:50051}
+      - SMS_APPLICATION_KEY=${SMS_APPLICATION_KEY:-gopay}
+      - SMS_COUNTRY_ISO2=${SMS_COUNTRY_ISO2:-ID}
+      - SMS_COUNTRY_CALLING_CODE=${SMS_COUNTRY_CALLING_CODE:-62}
+      - SMS_MAX_PRICE_DECIMAL=${SMS_MAX_PRICE_DECIMAL:-0.05}
+      - SMS_MAX_PRICE_CURRENCY=${SMS_MAX_PRICE_CURRENCY:-}
+      - SMS_LEASE_SECONDS=${SMS_LEASE_SECONDS:-1200}
+      - SMS_POLL_INTERVAL_SECONDS=${SMS_POLL_INTERVAL_SECONDS:-5}
       - ACCOUNT_DB_ADDR=account-db:50051
       - MAILBOX_ADDR=${MAILBOX_ADDR:-mailbox-api:50051}
       - OTP_ADDR=${OTP_ADDR:-otp-relay:50051}
@@ -204,7 +211,7 @@ services:
       - gopay-app
       - gopay-payment
       - otp-relay
-      - herosms-sms-service
+      - sms-service
       - postgres
       - temporal
     restart: always
@@ -308,26 +315,28 @@ services:
       - orchestrator
     restart: always
 
-  herosms-sms-service:
+  sms-service:
     build:
-      context: .
-      dockerfile: herosms-sms-service/Dockerfile
+      context: ./sms
+      dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:${HEROSMS_SMS_SERVICE_PORT:-50061}:50051"
+      - "127.0.0.1:${SMS_SERVICE_GRPC_PORT:-50061}:50051"
     environment:
-      - HEROSMS_API_KEY=${HEROSMS_API_KEY:-}
-      - HEROSMS_SERVICE=${HEROSMS_SERVICE:-ni}
-      - HEROSMS_COUNTRY=${HEROSMS_COUNTRY:-6}
-      - HEROSMS_COUNTRY_CALLING_CODE=${HEROSMS_COUNTRY_CALLING_CODE:-62}
-      - HEROSMS_MAX_PRICE=${HEROSMS_MAX_PRICE:-0.05}
-      - SMS_PROXY=${SMS_PROXY:-}
-      - SMS_PORT=50051
-      - PG_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
+      - SMS_LISTEN_ADDR=:50051
+      - SMS_PROVIDER=${SMS_PROVIDER:-herosms}
+      - SMS_PROVIDER_API_KEY=${SMS_PROVIDER_API_KEY:-}
+      - SMS_PROVIDER_ENDPOINT=${SMS_PROVIDER_ENDPOINT:-https://hero-sms.com/stubs/handler_api.php}
+      - SMS_APPLICATION_KEY=${SMS_APPLICATION_KEY:-gopay}
+      - SMS_COUNTRY_ISO2=${SMS_COUNTRY_ISO2:-ID}
+      - SMS_COUNTRY_CALLING_CODE=${SMS_COUNTRY_CALLING_CODE:-62}
+      - SMS_PROVIDER_COUNTRY_ID=${SMS_PROVIDER_COUNTRY_ID:-6}
+      - SMS_UPSTREAM_SERVICE_KEY=${SMS_UPSTREAM_SERVICE_KEY:-ni}
+      - SMS_MAX_PRICE_DECIMAL=${SMS_MAX_PRICE_DECIMAL:-0.05}
+      - SMS_MAX_PRICE_CURRENCY=${SMS_MAX_PRICE_CURRENCY:-}
+      - SMS_HTTP_PROXY=${SMS_HTTP_PROXY:-}
+      - SMS_HTTP_TIMEOUT_SECONDS=${SMS_HTTP_TIMEOUT_SECONDS:-20}
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on:
-      postgres:
-        condition: service_started
     restart: always
 
   webui:

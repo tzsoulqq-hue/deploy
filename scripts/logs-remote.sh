@@ -25,7 +25,7 @@ ALL_SERVICES=(
   webui
   gopay-app
   gopay-payment
-  herosms-sms-service
+  sms-service
   orchestrator
   outlook-imap-service
   outlook-register-service
@@ -49,7 +49,7 @@ Examples:
 
 Services:
   account-db browser-reg webui gopay-app gopay-payment
-  herosms-sms-service orchestrator outlook-imap-service
+  sms-service orchestrator outlook-imap-service
   outlook-register-service mailbox-api otp-relay temporal postgres
 
 Options:
@@ -95,7 +95,7 @@ join_by_comma() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|webui|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay|temporal|postgres)
+    account-db|browser-reg|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay|temporal|postgres)
       return 0
       ;;
     *)

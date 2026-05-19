@@ -42,7 +42,7 @@ ALL_SERVICES=(
   webui
   gopay-app
   gopay-payment
-  herosms-sms-service
+  sms-service
   orchestrator
   outlook-imap-service
   outlook-register-service
@@ -104,7 +104,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|webui|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
+    account-db|browser-reg|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
       return 0
       ;;
     *)
@@ -126,7 +126,10 @@ needs_camoufox_base() {
 
 docker_context() {
   case "$1" in
-    account-db|browser-reg|webui|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
+    sms-service)
+      printf 'sms'
+      ;;
+    account-db|browser-reg|webui|gopay-app|gopay-payment|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
       printf '.'
       ;;
   esac
@@ -139,6 +142,9 @@ dockerfile_path() {
       ;;
     mailbox-api)
       printf 'services/mailbox-api/Dockerfile'
+      ;;
+    sms-service)
+      printf 'Dockerfile'
       ;;
     *)
       printf '%s/Dockerfile' "$1"

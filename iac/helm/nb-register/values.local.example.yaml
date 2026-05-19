@@ -44,9 +44,9 @@ workloads:
     image:
       repository: gopay-app
       tag: dev
-  herosms-sms-service:
+  sms-service:
     image:
-      repository: herosms-sms-service
+      repository: sms-service
       tag: dev
 ingress:
   webui:
@@ -93,7 +93,8 @@ secrets:
     GOPAY_M1_SIGNATURE: ""
     GOPAY_SCREEN: ""
     GOPAY_D1: ""
-    HEROSMS_API_KEY: ""
+    SMS_PROVIDER_API_KEY: ""
+    SMS_HTTP_PROXY: ""
 
 gopayPaymentConfig:
   config:
