@@ -23,6 +23,11 @@ configEnv:
   BROWSER_REG_BLOCK_IMAGES: "false"
   BROWSER_REG_WINDOW_WIDTH: "1365"
   BROWSER_REG_WINDOW_HEIGHT: "768"
+  BROWSER_AUTOMATION_APPLY_MIGRATIONS: "true"
+  BROWSER_AUTOMATION_RUNTIME: camoufox
+  BROWSER_AUTOMATION_ARTIFACTS_DIR: /tmp/browser-automation-artifacts
+  BROWSER_AUTOMATION_CAMOUFOX_HEADLESS: "true"
+  BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS: "120"
 
   OUTLOOK_REGISTER_ENABLED: "false"
   OUTLOOK_REGISTER_PROXY_POOL: ""
@@ -358,6 +363,50 @@ workloads:
         mountPath: /dev/shm
     volumes:
       - name: screenshots
+        type: emptyDir
+      - name: shm
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 2Gi
+    resources:
+      limits:
+        memory: 4Gi
+
+  browser-automation:
+    enabled: true
+    replicas: 1
+    strategyType: Recreate
+    image:
+      repository: nb-register/browser-automation
+      tag: latest
+    postgresEnv: true
+    env:
+      BROWSER_AUTOMATION_LISTEN_ADDR: ":50051"
+      BROWSER_AUTOMATION_POSTGRES_DSN: '{{ include "nb-register.pgDsn" . }}'
+      BROWSER_AUTOMATION_APPLY_MIGRATIONS: '{{ .Values.configEnv.BROWSER_AUTOMATION_APPLY_MIGRATIONS }}'
+      BROWSER_AUTOMATION_RUNTIME: '{{ .Values.configEnv.BROWSER_AUTOMATION_RUNTIME }}'
+      BROWSER_AUTOMATION_ARTIFACTS_DIR: '{{ .Values.configEnv.BROWSER_AUTOMATION_ARTIFACTS_DIR }}'
+      BROWSER_AUTOMATION_CAMOUFOX_HEADLESS: '{{ .Values.configEnv.BROWSER_AUTOMATION_CAMOUFOX_HEADLESS }}'
+      BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS: '{{ .Values.configEnv.BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS }}'
+    ports:
+      - name: grpc
+        containerPort: 50051
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: grpc
+          port: 50051
+          targetPort: grpc
+    probes:
+      tcpSocketPort: grpc
+    volumeMounts:
+      - name: artifacts
+        mountPath: /tmp/browser-automation-artifacts
+      - name: shm
+        mountPath: /dev/shm
+    volumes:
+      - name: artifacts
         type: emptyDir
       - name: shm
         type: emptyDir

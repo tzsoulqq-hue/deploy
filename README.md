@@ -25,6 +25,7 @@ helm template nb-register iac/helm/nb-register --namespace nb-register >/tmp/nb-
 scripts/deploy-remote.sh all
 ```
 
+部署脚本默认从本仓父目录读取 sibling 目标仓源码，例如 `gpt/`、`mailbox/`、`sms/`、`browser-automation/` 和 `webui/`，并同步到远程构建目录。可通过 `SOURCE_ROOT` 指定源码父目录。
 部署脚本默认使用远程宿主机和 `nb-register` Helm release，可通过脚本参数或环境变量覆盖。
 
 ## 日志

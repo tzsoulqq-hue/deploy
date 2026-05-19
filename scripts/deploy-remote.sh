@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+DEPLOY_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
+SOURCE_ROOT=${SOURCE_ROOT:-$(cd -- "$DEPLOY_DIR/.." && pwd)}
 REMOTE_HOST=${REMOTE_HOST:-pood1e@192.168.0.126}
 REMOTE_DIR=${REMOTE_DIR:-/tmp/nb-register-build-src}
 REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/nb-register-business.yaml}
@@ -39,6 +42,7 @@ KEEP_REMOTE_TAR=${KEEP_REMOTE_TAR:-false}
 ALL_SERVICES=(
   account-db
   browser-reg
+  browser-automation
   webui
   gopay-app
   gopay-payment
@@ -80,7 +84,7 @@ Options:
 Environment overrides:
   REMOTE_KUBECONFIG, REMOTE_HELM, IMAGE_PREFIX, IMPORT_METHOD, VM_NAME,
   IMPORT_HOST_IP, IMPORT_HTTP_BIND, IMPORT_HTTP_PORT, HELM_TIMEOUT,
-  ROLLOUT_TIMEOUT, KEEP_REMOTE_TAR, CAMOUFOX_FETCH_PROXY,
+  ROLLOUT_TIMEOUT, KEEP_REMOTE_TAR, SOURCE_ROOT, CAMOUFOX_FETCH_PROXY,
   CAMOUFOX_BASE_BUILD_FLAGS.
 EOF
 }
@@ -104,7 +108,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
+    account-db|browser-reg|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
       return 0
       ;;
     *)
@@ -115,7 +119,7 @@ valid_service() {
 
 needs_camoufox_base() {
   case "$1" in
-    browser-reg|outlook-register-service)
+    browser-reg|browser-automation|outlook-register-service)
       return 0
       ;;
     *)
@@ -126,10 +130,22 @@ needs_camoufox_base() {
 
 docker_context() {
   case "$1" in
+    account-db|browser-reg|gopay-app|gopay-payment|orchestrator)
+      printf 'gpt'
+      ;;
+    outlook-imap-service|outlook-register-service|mailbox-api)
+      printf 'mailbox'
+      ;;
+    webui)
+      printf 'webui'
+      ;;
+    browser-automation)
+      printf 'browser-automation'
+      ;;
     sms-service)
       printf 'sms'
       ;;
-    account-db|browser-reg|webui|gopay-app|gopay-payment|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
+    otp-relay)
       printf '.'
       ;;
   esac
@@ -137,8 +153,20 @@ docker_context() {
 
 dockerfile_path() {
   case "$1" in
+    browser-reg)
+      printf 'registration/browser-reg/Dockerfile'
+      ;;
+    gopay-app)
+      printf 'channels/gopay/app/Dockerfile'
+      ;;
     gopay-payment)
-      printf 'gopay-payment/Dockerfile'
+      printf 'channels/gopay/payment/Dockerfile'
+      ;;
+    outlook-imap-service)
+      printf 'providers/outlook/imap-service/Dockerfile'
+      ;;
+    outlook-register-service)
+      printf 'providers/outlook/register-service/Dockerfile'
       ;;
     mailbox-api)
       printf 'services/mailbox-api/Dockerfile'
@@ -146,10 +174,38 @@ dockerfile_path() {
     sms-service)
       printf 'Dockerfile'
       ;;
+    browser-automation)
+      printf 'Dockerfile'
+      ;;
     *)
       printf '%s/Dockerfile' "$1"
       ;;
   esac
+}
+
+sync_one_repo() {
+  local name=$1
+  local source=$2
+  local dest=$3
+  if [[ ! -d "$source" ]]; then
+    return
+  fi
+  log "sync $name source to $REMOTE_HOST:$dest"
+  remote "mkdir -p $(shell_quote "$dest")"
+  rsync -az --delete \
+    --exclude '.git/' \
+    --exclude '.codex/' \
+    --exclude '.env' \
+    --exclude '.temp' \
+    --exclude '.tmp*/' \
+    --exclude '.venv*/' \
+    --exclude '**/__pycache__/' \
+    --exclude '**/.pytest_cache/' \
+    --exclude '**/node_modules/' \
+    --exclude '**/dist/' \
+    --exclude '**/build/' \
+    --exclude '**/*.log' \
+    "$source/" "$REMOTE_HOST:$dest/"
 }
 
 image_ref() {
@@ -296,10 +352,23 @@ sync_source() {
     --exclude '**/dist/' \
     --exclude '**/build/' \
     --exclude '**/*.log' \
+    --exclude 'gpt/' \
+    --exclude 'mailbox/' \
+    --exclude 'webui/' \
+    --exclude 'sms/' \
+    --exclude 'browser-automation/' \
+    --exclude 'otp-relay/' \
     --exclude 'gopay-capture/' \
     --exclude 'gopay-emulator/*.mitm' \
     --exclude 'gopay-payment/gopay-flow/config.json' \
-    ./ "$REMOTE_HOST:$REMOTE_DIR/"
+    "$DEPLOY_DIR/" "$REMOTE_HOST:$REMOTE_DIR/"
+
+  sync_one_repo gpt "$SOURCE_ROOT/gpt" "$REMOTE_DIR/gpt"
+  sync_one_repo mailbox "$SOURCE_ROOT/mailbox" "$REMOTE_DIR/mailbox"
+  sync_one_repo webui "$SOURCE_ROOT/webui" "$REMOTE_DIR/webui"
+  sync_one_repo sms "$SOURCE_ROOT/sms" "$REMOTE_DIR/sms"
+  sync_one_repo browser-automation "$SOURCE_ROOT/browser-automation" "$REMOTE_DIR/browser-automation"
+  sync_one_repo otp-relay "$SOURCE_ROOT/otp-relay" "$REMOTE_DIR/otp-relay"
 }
 
 build_camoufox_base_if_needed() {
@@ -335,13 +404,17 @@ build_images() {
 
   build_camoufox_base_if_needed
 
-  local service context dockerfile image
+  local service context dockerfile dockerfile_arg image
   for service in "${SERVICES[@]}"; do
     context=$(docker_context "$service")
     dockerfile=$(dockerfile_path "$service")
+    dockerfile_arg=$dockerfile
+    if [[ "$context" != "." && "$dockerfile" != /* ]]; then
+      dockerfile_arg=$context/$dockerfile
+    fi
     image=$(image_ref "$service")
     log "build $image"
-    remote "cd $(shell_quote "$REMOTE_DIR") && docker build -t $(shell_quote "$image") -f $(shell_quote "$dockerfile") $(shell_quote "$context")"
+    remote "cd $(shell_quote "$REMOTE_DIR") && docker build -t $(shell_quote "$image") -f $(shell_quote "$dockerfile_arg") $(shell_quote "$context")"
   done
 }
 

@@ -32,6 +32,10 @@ workloads:
     image:
       repository: browser-reg
       tag: dev
+  browser-automation:
+    image:
+      repository: browser-automation
+      tag: dev
   gopay-payment:
     image:
       repository: gopay-payment

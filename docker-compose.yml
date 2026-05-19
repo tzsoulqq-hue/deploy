@@ -38,10 +38,33 @@ services:
         condition: service_started
     restart: always
 
+  browser-automation:
+    build:
+      context: ../browser-automation
+      dockerfile: Dockerfile
+    init: true
+    ports:
+      - "127.0.0.1:${BROWSER_AUTOMATION_GRPC_PORT:-50062}:50051"
+    environment:
+      - BROWSER_AUTOMATION_LISTEN_ADDR=:50051
+      - BROWSER_AUTOMATION_POSTGRES_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
+      - BROWSER_AUTOMATION_APPLY_MIGRATIONS=${BROWSER_AUTOMATION_APPLY_MIGRATIONS:-true}
+      - BROWSER_AUTOMATION_RUNTIME=${BROWSER_AUTOMATION_RUNTIME:-camoufox}
+      - BROWSER_AUTOMATION_ARTIFACTS_DIR=${BROWSER_AUTOMATION_ARTIFACTS_DIR:-/tmp/browser-automation-artifacts}
+      - BROWSER_AUTOMATION_CAMOUFOX_HEADLESS=${BROWSER_AUTOMATION_CAMOUFOX_HEADLESS:-true}
+      - BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS=${BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS:-120}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    shm_size: "2gb"
+    depends_on:
+      postgres:
+        condition: service_started
+    restart: always
+
   outlook-imap-service:
     build:
-      context: .
-      dockerfile: outlook-imap-service/Dockerfile
+      context: ../mailbox
+      dockerfile: providers/outlook/imap-service/Dockerfile
     init: true
     ports:
       - "${OUTLOOK_GRPC_PORT:-50053}:50051" # gRPC
@@ -65,8 +88,8 @@ services:
 
   outlook-register-service:
     build:
-      context: .
-      dockerfile: outlook-register-service/Dockerfile
+      context: ../mailbox
+      dockerfile: providers/outlook/register-service/Dockerfile
     init: true
     ports:
       - "${OUTLOOK_REGISTER_GRPC_PORT:-50056}:50051" # gRPC
@@ -104,7 +127,7 @@ services:
 
   mailbox-api:
     build:
-      context: .
+      context: ../mailbox
       dockerfile: services/mailbox-api/Dockerfile
     ports:
       - "${MAILBOX_API_GRPC_PORT:-50058}:50051"
@@ -126,7 +149,7 @@ services:
 
   account-db:
     build:
-      context: .
+      context: ../gpt
       dockerfile: account-db/Dockerfile
     ports:
       - "${ACCOUNT_DB_GRPC_PORT:-50052}:50051"
@@ -142,7 +165,7 @@ services:
 
   orchestrator:
     build:
-      context: .
+      context: ../gpt
       dockerfile: orchestrator/Dockerfile
     ports:
       - "${ORCHESTRATOR_GRPC_PORT:-50055}:50051" # API
@@ -218,8 +241,8 @@ services:
 
   gopay-payment:
     build:
-      context: .
-      dockerfile: gopay-payment/Dockerfile
+      context: ../gpt
+      dockerfile: channels/gopay/payment/Dockerfile
     ports:
       - "${GOPAY_GRPC_PORT:-50054}:50051"
     environment:
@@ -229,7 +252,7 @@ services:
       - GOPAY_CHECKOUT_PROXY_URL=${GOPAY_CHECKOUT_PROXY_URL}
       - GOPAY_PAYMENT_PROXY_URL=${GOPAY_PAYMENT_PROXY_URL}
     volumes:
-      - ./gopay-payment/gopay-flow/config.json:/app/gopay-flow/config.json:ro
+      - ../gpt/channels/gopay/payment/gopay-flow/config.json:/app/gopay-flow/config.json:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: always
@@ -250,8 +273,8 @@ services:
 
   gopay-app:
     build:
-      context: .
-      dockerfile: gopay-app/Dockerfile
+      context: ../gpt
+      dockerfile: channels/gopay/app/Dockerfile
     ports:
       - "127.0.0.1:${GOPAY_APP_PORT:-50060}:50051"
     environment:
@@ -317,7 +340,7 @@ services:
 
   sms-service:
     build:
-      context: ./sms
+      context: ../sms
       dockerfile: Dockerfile
     ports:
       - "127.0.0.1:${SMS_SERVICE_GRPC_PORT:-50061}:50051"
@@ -341,8 +364,8 @@ services:
 
   webui:
     build:
-      context: .
-      dockerfile: webui/Dockerfile
+      context: ../webui
+      dockerfile: Dockerfile
     ports:
       - "${WEBUI_PORT:-8080}:8080"
     environment:
@@ -360,8 +383,8 @@ services:
 
   browser-reg:
     build:
-      context: .
-      dockerfile: browser-reg/Dockerfile
+      context: ../gpt
+      dockerfile: registration/browser-reg/Dockerfile
     init: true
     mem_limit: ${BROWSER_REG_MEM_LIMIT:-4g}
     ports:
