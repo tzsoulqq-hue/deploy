@@ -2,9 +2,9 @@
 set -Eeuo pipefail
 
 REMOTE_HOST=${REMOTE_HOST:-pood1e@192.168.0.126}
-REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/nb-register-business.yaml}
-RELEASE=${RELEASE:-nb-register}
-NAMESPACE=${NAMESPACE:-nb-register}
+REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/byte-v-forge-business.yaml}
+RELEASE=${RELEASE:-byte-v-forge}
+NAMESPACE=${NAMESPACE:-byte-v-forge}
 
 TAIL=${TAIL:-200}
 SINCE=${SINCE:-}
@@ -20,16 +20,13 @@ REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-10s}
 LIST_PODS=${LIST_PODS:-false}
 
 ALL_SERVICES=(
-  account-db
   browser-automation
   webui
-  gopay-app
-  gopay-payment
+  gpt-service
+  mailbox
   sms-service
-  orchestrator
-  outlook-imap-service
-  mailbox-api
-  temporal
+  workflow-runtime
+  workflow-runtime-engine
   postgres
 )
 
@@ -40,15 +37,14 @@ Usage:
 
 Examples:
   scripts/logs-remote.sh webui
-  scripts/logs-remote.sh -f orchestrator gopay-app
-  scripts/logs-remote.sh --since 30m --tail 500 gopay-payment
+  scripts/logs-remote.sh -f gpt-service mailbox
+  scripts/logs-remote.sh --since 30m --tail 500 gpt-service
   scripts/logs-remote.sh --previous browser-automation
   scripts/logs-remote.sh --list-pods all
 
 Services:
-  account-db browser-automation webui gopay-app gopay-payment
-  sms-service orchestrator outlook-imap-service
-  mailbox-api temporal postgres
+  browser-automation webui gpt-service mailbox sms-service
+  workflow-runtime workflow-runtime-engine postgres
 
 Options:
   -f, --follow              Follow logs.
@@ -62,8 +58,8 @@ Options:
   --list-pods               List matching pods instead of printing logs.
   --remote HOST             SSH target. Default: pood1e@192.168.0.126
   --kubeconfig FILE         Remote kubeconfig path.
-  --release NAME            Helm release / instance label. Default: nb-register
-  --namespace NAME          Kubernetes namespace. Default: nb-register
+  --release NAME            Helm release / instance label. Default: byte-v-forge
+  --namespace NAME          Kubernetes namespace. Default: byte-v-forge
   -h, --help                Show this help.
 
 Environment overrides:
@@ -93,7 +89,7 @@ join_by_comma() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|mailbox-api|temporal|postgres)
+    browser-automation|webui|gpt-service|mailbox|sms-service|workflow-runtime|workflow-runtime-engine|postgres)
       return 0
       ;;
     *)

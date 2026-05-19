@@ -3,9 +3,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "nb-register.componentFullname" (dict "root" . "component" "postgres") }}
+  name: {{ include "byte-v-forge.componentFullname" (dict "root" . "component" "postgres") }}
   labels:
-    {{- include "nb-register.componentLabels" (dict "root" . "component" "postgres") | nindent 4 }}
+    {{- include "byte-v-forge.componentLabels" (dict "root" . "component" "postgres") | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -13,33 +13,33 @@ spec:
       port: {{ .Values.postgres.service.port }}
       targetPort: postgres
   selector:
-    {{- include "nb-register.selectorLabels" (dict "root" . "component" "postgres") | nindent 4 }}
+    {{- include "byte-v-forge.selectorLabels" (dict "root" . "component" "postgres") | nindent 4 }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "nb-register.componentFullname" (dict "root" . "component" "postgres") }}
+  name: {{ include "byte-v-forge.componentFullname" (dict "root" . "component" "postgres") }}
   labels:
-    {{- include "nb-register.componentLabels" (dict "root" . "component" "postgres") | nindent 4 }}
+    {{- include "byte-v-forge.componentLabels" (dict "root" . "component" "postgres") | nindent 4 }}
 spec:
-  serviceName: {{ include "nb-register.componentFullname" (dict "root" . "component" "postgres") }}
+  serviceName: {{ include "byte-v-forge.componentFullname" (dict "root" . "component" "postgres") }}
   replicas: 1
   selector:
     matchLabels:
-      {{- include "nb-register.selectorLabels" (dict "root" . "component" "postgres") | nindent 6 }}
+      {{- include "byte-v-forge.selectorLabels" (dict "root" . "component" "postgres") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "nb-register.selectorLabels" (dict "root" . "component" "postgres") | nindent 8 }}
+        {{- include "byte-v-forge.selectorLabels" (dict "root" . "component" "postgres") | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "nb-register.serviceAccountName" . }}
+      serviceAccountName: {{ include "byte-v-forge.serviceAccountName" . }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
         - name: postgres
-          image: {{ include "nb-register.image" (dict "root" . "image" .Values.postgres.image) | quote }}
+          image: {{ include "byte-v-forge.image" (dict "root" . "image" .Values.postgres.image) | quote }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           ports:
             - name: postgres
@@ -50,7 +50,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "nb-register.appSecretName" . }}
+                  name: {{ include "byte-v-forge.appSecretName" . }}
                   key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               value: {{ .Values.postgres.auth.database | quote }}

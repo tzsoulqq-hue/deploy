@@ -1,0 +1,339 @@
+global:
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+podAnnotations: {}
+podLabels: {}
+
+configEnv:
+  BROWSER_AUTOMATION_APPLY_MIGRATIONS: "true"
+  BROWSER_AUTOMATION_RUNTIME: camoufox
+  WORKFLOW_RUNTIME_NAMESPACE: default
+  GPT_WORKFLOW_RUNTIME_TASK_QUEUE: byte-v-forge-gpt-service
+  MAILBOX_WORKFLOW_RUNTIME_TASK_QUEUE: byte-v-forge-mailbox-service
+  SMS_PROVIDER: herosms
+  SMS_PROVIDER_COUNTRY_ID: "6"
+  SMS_UPSTREAM_SERVICE_KEY: ni
+  GOPAY_COUNTRY_CODE: "62"
+
+secrets:
+  create: true
+  name: ""
+  stringData:
+    POSTGRES_PASSWORD: byte_v_forge
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
+    SMS_PROVIDER_API_KEY: ""
+    SMS_HTTP_PROXY: ""
+    GOPAY_PHONE_NUMBER: ""
+    GOPAY_WA_PHONE_NUMBER: ""
+    GOPAY_PIN: ""
+    GOPAY_PROXY_POOL: ""
+    GOPAY_CHECKOUT_PROXY_URL: ""
+    GOPAY_PAYMENT_PROXY_URL: ""
+    GOPAY_HMAC_KEY: ""
+    GOPAY_X_E2: ""
+    GOTO_CLIENT_SECRET: ""
+    GOTO_SSO_CLIENT_SECRET: ""
+    GOPAY_ADD_BALANCE_ENVELOPE_LINK: ""
+    GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS: ""
+
+postgres:
+  enabled: true
+  image:
+    repository: docker.m.daocloud.io/library/postgres
+    tag: 15-alpine
+  auth:
+    user: byte_v_forge
+    database: byte_v_forge
+  service:
+    port: 5432
+  sslMode: disable
+  external:
+    host: ""
+    port: 5432
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+  resources: {}
+
+workflowRuntimeEngine:
+  enabled: true
+  image:
+    repository: docker.m.daocloud.io/temporalio/auto-setup
+    tag: 1.29.2
+  service:
+    port: 7233
+  database: workflow_runtime
+  visibilityDatabase: workflow_runtime_visibility
+  resources: {}
+
+ingress:
+  webui:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: byte-v-forge.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  webhook:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: byte-v-forge-webhook.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+workloads:
+  workflow-runtime:
+    enabled: true
+    replicas: 1
+    image:
+      repository: byte-v-forge/workflow-runtime
+      tag: latest
+    env:
+      WORKFLOW_RUNTIME_LISTEN_ADDR: ":7233"
+      WORKFLOW_RUNTIME_BACKEND_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime-engine") }}:7233'
+      WORKFLOW_RUNTIME_HEALTH_ADDR: ":8080"
+      WORKFLOW_RUNTIME_DIAL_TIMEOUT_SECONDS: "5"
+    ports:
+      - name: grpc
+        containerPort: 7233
+      - name: health
+        containerPort: 8080
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: grpc
+          port: 7233
+          targetPort: grpc
+        - name: health
+          port: 8080
+          targetPort: health
+    probes:
+      httpGet:
+        path: /healthz
+        port: health
+    resources: {}
+
+  browser-automation:
+    enabled: true
+    replicas: 1
+    strategyType: Recreate
+    image:
+      repository: byte-v-forge/browser-automation
+      tag: latest
+    postgresEnv: true
+    env:
+      BROWSER_AUTOMATION_LISTEN_ADDR: ":50051"
+      BROWSER_AUTOMATION_POSTGRES_DSN: '{{ include "byte-v-forge.pgDsn" . }}'
+      BROWSER_AUTOMATION_APPLY_MIGRATIONS: '{{ .Values.configEnv.BROWSER_AUTOMATION_APPLY_MIGRATIONS }}'
+      BROWSER_AUTOMATION_RUNTIME: '{{ .Values.configEnv.BROWSER_AUTOMATION_RUNTIME }}'
+    secretEnv:
+      - name: BROWSER_AUTOMATION_PROXY_REFS_JSON
+        key: BROWSER_AUTOMATION_PROXY_REFS_JSON
+    ports:
+      - name: grpc
+        containerPort: 50051
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: grpc
+          port: 50051
+          targetPort: grpc
+    probes:
+      tcpSocketPort: grpc
+    volumeMounts:
+      - name: shm
+        mountPath: /dev/shm
+    volumes:
+      - name: shm
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 2Gi
+    resources:
+      limits:
+        memory: 4Gi
+
+  mailbox:
+    enabled: true
+    replicas: 1
+    image:
+      repository: byte-v-forge/mailbox
+      tag: latest
+    postgresEnv: true
+    env:
+      MAILBOX_LISTEN_ADDR: ":50051"
+      MAILBOX_OUTLOOK_INTERNAL_ADDR: "127.0.0.1:50052"
+      MAILBOX_PG_DSN: '{{ include "byte-v-forge.pgDsn" . }}'
+      BROWSER_AUTOMATION_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "browser-automation") }}:50051'
+      WORKFLOW_RUNTIME_ADDRESS: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime") }}:7233'
+      WORKFLOW_RUNTIME_NAMESPACE: '{{ .Values.configEnv.WORKFLOW_RUNTIME_NAMESPACE }}'
+      WORKFLOW_RUNTIME_TASK_QUEUE: '{{ .Values.configEnv.MAILBOX_WORKFLOW_RUNTIME_TASK_QUEUE }}'
+      WORKFLOW_RUNTIME_IDENTITY: mailbox
+    ports:
+      - name: grpc
+        containerPort: 50051
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: grpc
+          port: 50051
+          targetPort: grpc
+    probes:
+      tcpSocketPort: grpc
+    resources: {}
+
+  gpt-service:
+    enabled: true
+    replicas: 1
+    image:
+      repository: byte-v-forge/gpt-service
+      tag: latest
+    postgresEnv: true
+    env:
+      GPT_SERVICE_LISTEN_ADDR: ":50051"
+      GPT_ACCOUNT_INTERNAL_ADDR: "127.0.0.1:50052"
+      GPT_GOPAY_PAYMENT_INTERNAL_ADDR: "127.0.0.1:50054"
+      GPT_GOPAY_APP_INTERNAL_PORT: "50060"
+      GPT_SERVICE_PG_DSN: '{{ include "byte-v-forge.pgDsn" . }}'
+      BROWSER_AUTOMATION_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "browser-automation") }}:50051'
+      SMS_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "sms-service") }}:50051'
+      MAILBOX_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "mailbox") }}:50051'
+      WORKFLOW_RUNTIME_ADDRESS: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime") }}:7233'
+      WORKFLOW_RUNTIME_NAMESPACE: '{{ .Values.configEnv.WORKFLOW_RUNTIME_NAMESPACE }}'
+      WORKFLOW_RUNTIME_TASK_QUEUE: '{{ .Values.configEnv.GPT_WORKFLOW_RUNTIME_TASK_QUEUE }}'
+      WORKFLOW_RUNTIME_IDENTITY: gpt-service
+      GOPAY_COUNTRY_CODE: '{{ .Values.configEnv.GOPAY_COUNTRY_CODE }}'
+    secretEnv:
+      - name: GOPAY_PHONE_NUMBER
+        key: GOPAY_PHONE_NUMBER
+      - name: GOPAY_WA_PHONE_NUMBER
+        key: GOPAY_WA_PHONE_NUMBER
+      - name: GOPAY_PIN
+        key: GOPAY_PIN
+      - name: GOPAY_PROXY_POOL
+        key: GOPAY_PROXY_POOL
+      - name: GOPAY_CHECKOUT_PROXY_URL
+        key: GOPAY_CHECKOUT_PROXY_URL
+      - name: GOPAY_PAYMENT_PROXY_URL
+        key: GOPAY_PAYMENT_PROXY_URL
+      - name: GOPAY_HMAC_KEY
+        key: GOPAY_HMAC_KEY
+      - name: GOPAY_X_E2
+        key: GOPAY_X_E2
+      - name: GOTO_CLIENT_SECRET
+        key: GOTO_CLIENT_SECRET
+      - name: GOTO_SSO_CLIENT_SECRET
+        key: GOTO_SSO_CLIENT_SECRET
+      - name: GOPAY_ADD_BALANCE_ENVELOPE_LINK
+        key: GOPAY_ADD_BALANCE_ENVELOPE_LINK
+      - name: GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS
+        key: GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS
+    ports:
+      - name: grpc
+        containerPort: 50051
+      - name: account-grpc
+        containerPort: 50052
+      - name: payment-grpc
+        containerPort: 50054
+      - name: http-webhook
+        containerPort: 8081
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: grpc
+          port: 50051
+          targetPort: grpc
+        - name: account-grpc
+          port: 50052
+          targetPort: account-grpc
+        - name: payment-grpc
+          port: 50054
+          targetPort: payment-grpc
+        - name: http-webhook
+          port: 8081
+          targetPort: http-webhook
+    probes:
+      tcpSocketPort: grpc
+    resources: {}
+
+  sms-service:
+    enabled: true
+    replicas: 1
+    image:
+      repository: byte-v-forge/sms-service
+      tag: latest
+    env:
+      SMS_LISTEN_ADDR: ":50051"
+      SMS_PROVIDER: '{{ .Values.configEnv.SMS_PROVIDER }}'
+      SMS_PROVIDER_COUNTRY_ID: '{{ .Values.configEnv.SMS_PROVIDER_COUNTRY_ID }}'
+      SMS_UPSTREAM_SERVICE_KEY: '{{ .Values.configEnv.SMS_UPSTREAM_SERVICE_KEY }}'
+    secretEnv:
+      - name: SMS_PROVIDER_API_KEY
+        key: SMS_PROVIDER_API_KEY
+      - name: SMS_HTTP_PROXY
+        key: SMS_HTTP_PROXY
+    ports:
+      - name: grpc
+        containerPort: 50051
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: grpc
+          port: 50051
+          targetPort: grpc
+    probes:
+      tcpSocketPort: grpc
+    resources: {}
+
+  webui:
+    enabled: true
+    replicas: 1
+    image:
+      repository: byte-v-forge/webui
+      tag: latest
+    env:
+      LISTEN_ADDR: ":8080"
+      GPT_ACCOUNT_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "gpt-service") }}:50052'
+      GPT_WORKFLOW_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "gpt-service") }}:50051'
+      GPT_PAYMENT_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "gpt-service") }}:50054'
+      MAILBOX_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "mailbox") }}:50051'
+    ports:
+      - name: http
+        containerPort: 8080
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: http
+          port: 8080
+          targetPort: http
+    probes:
+      httpGet:
+        path: /api/health
+        port: http
+    resources: {}

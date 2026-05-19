@@ -1,8 +1,8 @@
-{{- define "nb-register.name" -}}
+{{- define "byte-v-forge.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "nb-register.fullname" -}}
+{{- define "byte-v-forge.fullname" -}}
 {{- if .Values.fullnameOverride -}}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -15,54 +15,46 @@
 {{- end -}}
 {{- end -}}
 
-{{- define "nb-register.componentFullname" -}}
-{{- printf "%s-%s" (include "nb-register.fullname" .root) .component | trunc 63 | trimSuffix "-" -}}
+{{- define "byte-v-forge.componentFullname" -}}
+{{- printf "%s-%s" (include "byte-v-forge.fullname" .root) .component | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "nb-register.chart" -}}
+{{- define "byte-v-forge.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "nb-register.labels" -}}
-helm.sh/chart: {{ include "nb-register.chart" . }}
-app.kubernetes.io/name: {{ include "nb-register.name" . }}
+{{- define "byte-v-forge.labels" -}}
+helm.sh/chart: {{ include "byte-v-forge.chart" . }}
+app.kubernetes.io/name: {{ include "byte-v-forge.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
-{{- define "nb-register.componentLabels" -}}
-{{ include "nb-register.labels" .root }}
+{{- define "byte-v-forge.componentLabels" -}}
+{{ include "byte-v-forge.labels" .root }}
 app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 
-{{- define "nb-register.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "nb-register.name" .root }}
+{{- define "byte-v-forge.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "byte-v-forge.name" .root }}
 app.kubernetes.io/instance: {{ .root.Release.Name }}
 app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 
-{{- define "nb-register.serviceAccountName" -}}
+{{- define "byte-v-forge.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create -}}
-{{- default (include "nb-register.fullname" .) .Values.serviceAccount.name -}}
+{{- default (include "byte-v-forge.fullname" .) .Values.serviceAccount.name -}}
 {{- else -}}
 {{- default "default" .Values.serviceAccount.name -}}
 {{- end -}}
 {{- end -}}
 
-{{- define "nb-register.configName" -}}
-{{- printf "%s-config" (include "nb-register.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- define "byte-v-forge.appSecretName" -}}
+{{- default (printf "%s-secret" (include "byte-v-forge.fullname" .)) .Values.secrets.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "nb-register.appSecretName" -}}
-{{- default (printf "%s-secret" (include "nb-register.fullname" .)) .Values.secrets.name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{- define "nb-register.gopayConfigSecretName" -}}
-{{- default (include "nb-register.appSecretName" .) .Values.gopayPaymentConfig.secretName | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{- define "nb-register.image" -}}
+{{- define "byte-v-forge.image" -}}
 {{- $registry := default "" .root.Values.global.imageRegistry -}}
 {{- $repository := required "image.repository is required" .image.repository -}}
 {{- $tag := default "latest" .image.tag -}}
@@ -75,15 +67,15 @@ app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 {{- end -}}
 
-{{- define "nb-register.postgresHost" -}}
+{{- define "byte-v-forge.postgresHost" -}}
 {{- if .Values.postgres.enabled -}}
-{{- include "nb-register.componentFullname" (dict "root" . "component" "postgres") -}}
+{{- include "byte-v-forge.componentFullname" (dict "root" . "component" "postgres") -}}
 {{- else -}}
 {{- required "postgres.external.host is required when postgres.enabled=false" .Values.postgres.external.host -}}
 {{- end -}}
 {{- end -}}
 
-{{- define "nb-register.postgresPort" -}}
+{{- define "byte-v-forge.postgresPort" -}}
 {{- if .Values.postgres.enabled -}}
 {{- .Values.postgres.service.port -}}
 {{- else -}}
@@ -91,6 +83,6 @@ app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 {{- end -}}
 
-{{- define "nb-register.pgDsn" -}}
-{{- printf "host=%s user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) dbname=$(POSTGRES_DB) port=%v sslmode=%s" (include "nb-register.postgresHost" .) (include "nb-register.postgresPort" .) .Values.postgres.sslMode -}}
+{{- define "byte-v-forge.pgDsn" -}}
+{{- printf "host=%s user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) dbname=$(POSTGRES_DB) port=%v sslmode=%s" (include "byte-v-forge.postgresHost" .) (include "byte-v-forge.postgresPort" .) .Values.postgres.sslMode -}}
 {{- end -}}

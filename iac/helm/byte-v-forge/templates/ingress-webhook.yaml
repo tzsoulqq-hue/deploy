@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "nb-register.componentFullname" (dict "root" . "component" "webhook") }}
+  name: {{ include "byte-v-forge.componentFullname" (dict "root" . "component" "webhook") }}
   labels:
-    {{- include "nb-register.componentLabels" (dict "root" . "component" "webhook") | nindent 4 }}
+    {{- include "byte-v-forge.componentLabels" (dict "root" . "component" "webhook") | nindent 4 }}
   {{- with .Values.ingress.webhook.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -27,7 +27,7 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "nb-register.componentFullname" (dict "root" $ "component" "orchestrator") }}
+                name: {{ include "byte-v-forge.componentFullname" (dict "root" $ "component" "gpt-service") }}
                 port:
                   name: http-webhook
           {{- end }}

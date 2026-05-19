@@ -1,6 +1,8 @@
+name: byte-v-forge
+
 services:
   camoufox-base:
-    image: nb-register-camoufox-base:latest
+    image: byte-v-forge-camoufox-base:latest
     build:
       context: ./docker/camoufox-base
       dockerfile: Dockerfile
@@ -12,30 +14,43 @@ services:
   postgres:
     image: docker.m.daocloud.io/library/postgres:15-alpine
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-nb_register}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-nb_register}
-      - POSTGRES_DB=${POSTGRES_DB:-nb_register}
+      - POSTGRES_USER=${POSTGRES_USER:-byte_v_forge}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-byte_v_forge}
+      - POSTGRES_DB=${POSTGRES_DB:-byte_v_forge}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
 
-  temporal:
+  workflow-runtime-engine:
     image: docker.m.daocloud.io/temporalio/auto-setup:1.29.2
-    ports:
-      - "${TEMPORAL_PORT:-7233}:7233"
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:-nb_register}
-      - POSTGRES_PWD=${POSTGRES_PASSWORD:-nb_register}
+      - POSTGRES_USER=${POSTGRES_USER:-byte_v_forge}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-byte_v_forge}
       - POSTGRES_SEEDS=postgres
-      - DBNAME=${TEMPORAL_DB:-temporal}
-      - VISIBILITY_DBNAME=${TEMPORAL_VISIBILITY_DB:-temporal_visibility}
+      - DBNAME=workflow_runtime
+      - VISIBILITY_DBNAME=workflow_runtime_visibility
     depends_on:
       postgres:
         condition: service_started
+    restart: always
+
+  workflow-runtime:
+    build:
+      context: ../workflow-runtime
+      dockerfile: Dockerfile
+    ports:
+      - "${WORKFLOW_RUNTIME_PORT:-7233}:7233"
+    environment:
+      - WORKFLOW_RUNTIME_LISTEN_ADDR=:7233
+      - WORKFLOW_RUNTIME_BACKEND_ADDR=workflow-runtime-engine:7233
+      - WORKFLOW_RUNTIME_HEALTH_ADDR=:8080
+      - WORKFLOW_RUNTIME_DIAL_TIMEOUT_SECONDS=5
+    depends_on:
+      - workflow-runtime-engine
     restart: always
 
   browser-automation:
@@ -47,12 +62,9 @@ services:
       - "127.0.0.1:${BROWSER_AUTOMATION_GRPC_PORT:-50062}:50051"
     environment:
       - BROWSER_AUTOMATION_LISTEN_ADDR=:50051
-      - BROWSER_AUTOMATION_POSTGRES_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
+      - BROWSER_AUTOMATION_POSTGRES_DSN=host=postgres user=${POSTGRES_USER:-byte_v_forge} password=${POSTGRES_PASSWORD:-byte_v_forge} dbname=${POSTGRES_DB:-byte_v_forge} port=5432 sslmode=disable
       - BROWSER_AUTOMATION_APPLY_MIGRATIONS=${BROWSER_AUTOMATION_APPLY_MIGRATIONS:-true}
       - BROWSER_AUTOMATION_RUNTIME=${BROWSER_AUTOMATION_RUNTIME:-camoufox}
-      - BROWSER_AUTOMATION_ARTIFACTS_DIR=${BROWSER_AUTOMATION_ARTIFACTS_DIR:-/tmp/browser-automation-artifacts}
-      - BROWSER_AUTOMATION_CAMOUFOX_HEADLESS=${BROWSER_AUTOMATION_CAMOUFOX_HEADLESS:-true}
-      - BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS=${BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS:-120}
       - BROWSER_AUTOMATION_PROXY_REFS_JSON=${BROWSER_AUTOMATION_PROXY_REFS_JSON:-{}}
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -62,256 +74,72 @@ services:
         condition: service_started
     restart: always
 
-  outlook-imap-service:
+  mailbox:
     build:
       context: ../mailbox
-      dockerfile: providers/outlook/imap-service/Dockerfile
+      dockerfile: Dockerfile
     init: true
     ports:
-      - "${OUTLOOK_GRPC_PORT:-50053}:50051" # gRPC
+      - "${MAILBOX_GRPC_PORT:-50058}:50051"
     environment:
-      - LISTEN_ADDR=:50051
-      - PG_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
-      - OUTLOOK_OAUTH_CLIENT_ID=${OUTLOOK_OAUTH_CLIENT_ID:-}
-      - OUTLOOK_OAUTH_SCOPE=${OUTLOOK_OAUTH_SCOPE:-}
-      - OUTLOOK_POLL_INTERVAL_SECONDS=${OUTLOOK_POLL_INTERVAL_SECONDS:-5}
-      - OUTLOOK_MESSAGE_LIMIT=${OUTLOOK_MESSAGE_LIMIT:-25}
-      - OUTLOOK_HTTP_TIMEOUT_SECONDS=${OUTLOOK_HTTP_TIMEOUT_SECONDS:-20}
-      - OUTLOOK_ALIAS_RANDOM_LENGTH=${OUTLOOK_ALIAS_RANDOM_LENGTH:-6}
-      - OUTLOOK_GRAPH_MESSAGES_URL=${OUTLOOK_GRAPH_MESSAGES_URL:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      postgres:
-        condition: service_started
-    restart: always
-
-  mailbox-api:
-    build:
-      context: ../mailbox
-      dockerfile: services/mailbox-api/Dockerfile
-    ports:
-      - "${MAILBOX_API_GRPC_PORT:-50058}:50051"
-    environment:
-      - LISTEN_ADDR=:50051
-      - MAILBOX_API_PG_DSN=${MAILBOX_API_PG_DSN:-host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable}
-      - MAILBOX_EMAIL_SERVICE_ADDR=outlook-imap-service:50051
-      - BROWSER_AUTOMATION_ADDR=${BROWSER_AUTOMATION_ADDR:-browser-automation:50051}
-      - OUTLOOK_REGISTER_ENABLED=${OUTLOOK_REGISTER_ENABLED:-false}
-      - OUTLOOK_REGISTER_AUTOMATION_PROXY_REF=${OUTLOOK_REGISTER_AUTOMATION_PROXY_REF:-outlook}
-      - OUTLOOK_REGISTER_AUTOMATION_LOCALE=${OUTLOOK_REGISTER_AUTOMATION_LOCALE:-en-US}
-      - OUTLOOK_REGISTER_AUTOMATION_ACCEPT_LANGUAGE=${OUTLOOK_REGISTER_AUTOMATION_ACCEPT_LANGUAGE:-en-US,en;q=0.9}
-      - OUTLOOK_REGISTER_AUTOMATION_TIMEZONE=${OUTLOOK_REGISTER_AUTOMATION_TIMEZONE:-}
-      - OUTLOOK_REGISTER_AUTOMATION_USER_AGENT=${OUTLOOK_REGISTER_AUTOMATION_USER_AGENT:-}
-      - OUTLOOK_REGISTER_AUTOMATION_WINDOW_WIDTH=${OUTLOOK_REGISTER_AUTOMATION_WINDOW_WIDTH:-1365}
-      - OUTLOOK_REGISTER_AUTOMATION_WINDOW_HEIGHT=${OUTLOOK_REGISTER_AUTOMATION_WINDOW_HEIGHT:-768}
-      - OUTLOOK_REGISTER_AUTOMATION_SESSION_TTL_SECONDS=${OUTLOOK_REGISTER_AUTOMATION_SESSION_TTL_SECONDS:-900}
-      - OUTLOOK_REGISTER_AUTOMATION_COMMAND_TIMEOUT_SECONDS=${OUTLOOK_REGISTER_AUTOMATION_COMMAND_TIMEOUT_SECONDS:-180}
-      - OUTLOOK_REGISTER_OAUTH_CLIENT_ID=${OUTLOOK_REGISTER_OAUTH_CLIENT_ID:-}
-      - OUTLOOK_REGISTER_OAUTH_REDIRECT_URL=${OUTLOOK_REGISTER_OAUTH_REDIRECT_URL:-}
-      - OUTLOOK_REGISTER_OAUTH_SCOPES=${OUTLOOK_REGISTER_OAUTH_SCOPES:-offline_access https://graph.microsoft.com/Mail.Read}
-      - OUTLOOK_REGISTER_HTTP_TIMEOUT_SECONDS=${OUTLOOK_REGISTER_HTTP_TIMEOUT_SECONDS:-30}
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
-      - TEMPORAL_TASK_QUEUE=${MAILBOX_TEMPORAL_TASK_QUEUE:-nb-register-mailbox-api}
-      - TEMPORAL_IDENTITY=mailbox-api
+      - MAILBOX_LISTEN_ADDR=:50051
+      - MAILBOX_OUTLOOK_INTERNAL_ADDR=127.0.0.1:50052
+      - MAILBOX_PG_DSN=${MAILBOX_PG_DSN:-host=postgres user=${POSTGRES_USER:-byte_v_forge} password=${POSTGRES_PASSWORD:-byte_v_forge} dbname=${POSTGRES_DB:-byte_v_forge} port=5432 sslmode=disable}
+      - BROWSER_AUTOMATION_ADDR=browser-automation:50051
+      - WORKFLOW_RUNTIME_ADDRESS=workflow-runtime:7233
+      - WORKFLOW_RUNTIME_NAMESPACE=${WORKFLOW_RUNTIME_NAMESPACE:-default}
+      - WORKFLOW_RUNTIME_TASK_QUEUE=${MAILBOX_WORKFLOW_RUNTIME_TASK_QUEUE:-byte-v-forge-mailbox-service}
+      - WORKFLOW_RUNTIME_IDENTITY=mailbox
     depends_on:
       - postgres
       - browser-automation
-      - outlook-imap-service
-      - temporal
+      - workflow-runtime
     restart: always
 
-  account-db:
+  gpt-service:
     build:
       context: ../gpt
-      dockerfile: account-db/Dockerfile
+      dockerfile: gpt-service/Dockerfile
+    init: true
     ports:
-      - "${ACCOUNT_DB_GRPC_PORT:-50052}:50051"
-    environment:
-      - PG_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
-      - LISTEN_ADDR=:50051
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      postgres:
-        condition: service_started
-    restart: always
-
-  orchestrator:
-    build:
-      context: ../gpt
-      dockerfile: orchestrator/Dockerfile
-    ports:
-      - "${ORCHESTRATOR_GRPC_PORT:-50055}:50051" # API
+      - "${GPT_SERVICE_GRPC_PORT:-50055}:50051"
+      - "127.0.0.1:${GPT_ACCOUNT_GRPC_PORT:-50052}:50052"
+      - "127.0.0.1:${GPT_PAYMENT_GRPC_PORT:-50054}:50054"
       - "0.0.0.0:${GOPAY_WEBHOOK_PORT:-8081}:8081"
     environment:
-      - LISTEN_ADDR=:50051
-      - BROWSER_AUTOMATION_ADDR=${BROWSER_AUTOMATION_ADDR:-browser-automation:50051}
-      - BROWSER_AUTH_PROXY_REF=${BROWSER_AUTH_PROXY_REF:-register}
-      - BROWSER_AUTH_LOCALE=${BROWSER_AUTH_LOCALE:-en-US}
-      - BROWSER_AUTH_ACCEPT_LANGUAGE=${BROWSER_AUTH_ACCEPT_LANGUAGE:-en-US,en;q=0.9}
-      - BROWSER_AUTH_TIMEZONE=${BROWSER_AUTH_TIMEZONE:-}
-      - BROWSER_AUTH_USER_AGENT=${BROWSER_AUTH_USER_AGENT:-}
-      - BROWSER_AUTH_WINDOW_WIDTH=${BROWSER_AUTH_WINDOW_WIDTH:-1365}
-      - BROWSER_AUTH_WINDOW_HEIGHT=${BROWSER_AUTH_WINDOW_HEIGHT:-768}
-      - BROWSER_AUTH_SESSION_TTL_SECONDS=${BROWSER_AUTH_SESSION_TTL_SECONDS:-1800}
-      - BROWSER_AUTH_COMMAND_TIMEOUT_SECONDS=${BROWSER_AUTH_COMMAND_TIMEOUT_SECONDS:-120}
-      - BROWSER_AUTH_BLOCK_IMAGES=${BROWSER_AUTH_BLOCK_IMAGES:-false}
-      - BROWSER_AUTH_GEOIP=${BROWSER_AUTH_GEOIP:-true}
-      - BROWSER_AUTH_HUMANIZE=${BROWSER_AUTH_HUMANIZE:-true}
-      - PAYMENT_ADDR=${PAYMENT_ADDR:-gopay-payment:50051}
-      - GOPAY_APP_ADDR=${GOPAY_APP_ADDR:-gopay-app:50051}
+      - GPT_SERVICE_LISTEN_ADDR=:50051
+      - GPT_ACCOUNT_INTERNAL_ADDR=127.0.0.1:50052
+      - GPT_GOPAY_PAYMENT_INTERNAL_ADDR=127.0.0.1:50054
+      - GPT_GOPAY_APP_INTERNAL_PORT=50060
+      - GPT_SERVICE_PG_DSN=host=postgres user=${POSTGRES_USER:-byte_v_forge} password=${POSTGRES_PASSWORD:-byte_v_forge} dbname=${POSTGRES_DB:-byte_v_forge} port=5432 sslmode=disable
+      - BROWSER_AUTOMATION_ADDR=browser-automation:50051
+      - SMS_ADDR=sms-service:50051
+      - MAILBOX_ADDR=mailbox:50051
+      - WORKFLOW_RUNTIME_ADDRESS=workflow-runtime:7233
+      - WORKFLOW_RUNTIME_NAMESPACE=${WORKFLOW_RUNTIME_NAMESPACE:-default}
+      - WORKFLOW_RUNTIME_TASK_QUEUE=${GPT_WORKFLOW_RUNTIME_TASK_QUEUE:-byte-v-forge-gpt-service}
+      - WORKFLOW_RUNTIME_IDENTITY=gpt-service
       - GOPAY_COUNTRY_CODE=${GOPAY_COUNTRY_CODE:-62}
-      - GOPAY_PHONE_NUMBER=${GOPAY_PHONE_NUMBER}
-      - GOPAY_WA_PHONE_NUMBER=${GOPAY_WA_PHONE_NUMBER}
-      - GOPAY_PIN=${GOPAY_PIN}
-      - SMS_ADDR=${SMS_ADDR:-sms-service:50051}
-      - SMS_APPLICATION_KEY=${SMS_APPLICATION_KEY:-gopay}
-      - SMS_COUNTRY_ISO2=${SMS_COUNTRY_ISO2:-ID}
-      - SMS_COUNTRY_CALLING_CODE=${SMS_COUNTRY_CALLING_CODE:-62}
-      - SMS_MAX_PRICE_DECIMAL=${SMS_MAX_PRICE_DECIMAL:-0.05}
-      - SMS_MAX_PRICE_CURRENCY=${SMS_MAX_PRICE_CURRENCY:-}
-      - SMS_LEASE_SECONDS=${SMS_LEASE_SECONDS:-1200}
-      - SMS_POLL_INTERVAL_SECONDS=${SMS_POLL_INTERVAL_SECONDS:-5}
-      - ACCOUNT_DB_ADDR=account-db:50051
-      - MAILBOX_ADDR=${MAILBOX_ADDR:-mailbox-api:50051}
-      - GOPAY_OTP_TIMEOUT_SECONDS=${GOPAY_OTP_TIMEOUT_SECONDS:-180}
-      - GOPAY_OTP_WEBHOOK_LISTEN_ADDR=${GOPAY_OTP_WEBHOOK_LISTEN_ADDR:-:8081}
-      - GOPAY_OTP_WEBHOOK_TTL_SECONDS=${GOPAY_OTP_WEBHOOK_TTL_SECONDS:-600}
-      - GOPAY_OTP_WEBHOOK_MAX_ITEMS=${GOPAY_OTP_WEBHOOK_MAX_ITEMS:-100}
-      - REGISTRATION_OTP_TIMEOUT_SECONDS=${REGISTRATION_OTP_TIMEOUT_SECONDS:-180}
-      - GOPAY_CHANGE_PHONE_DISABLED=${GOPAY_CHANGE_PHONE_DISABLED:-false}
-      - GOPAY_CHANGE_PHONE_MAX_FAILURES=${GOPAY_CHANGE_PHONE_MAX_FAILURES:-3}
-      - GOPAY_CHANGE_PHONE_OTP_RETRY_ATTEMPTS=${GOPAY_CHANGE_PHONE_OTP_RETRY_ATTEMPTS:-1}
-      - GOPAY_CHANGE_PHONE_GET_NUMBER_RETRY_SECONDS=${GOPAY_CHANGE_PHONE_GET_NUMBER_RETRY_SECONDS:-5}
-      - GOPAY_CHANGE_PHONE_SMS_CANCEL_TIMEOUT_SECONDS=${GOPAY_CHANGE_PHONE_SMS_CANCEL_TIMEOUT_SECONDS:-130}
-      - GOPAY_CHANGE_PHONE_SMS_CANCEL_RETRY_SECONDS=${GOPAY_CHANGE_PHONE_SMS_CANCEL_RETRY_SECONDS:-10}
-      - GOPAY_ADD_BALANCE_MODE=${GOPAY_ADD_BALANCE_MODE:-manual_transfer}
-      - GOPAY_ADD_BALANCE_ENVELOPE_LINK=${GOPAY_ADD_BALANCE_ENVELOPE_LINK}
-      - GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS=${GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS}
-      - GOPAY_ADD_BALANCE_TRANSFER_AMOUNT_RP=${GOPAY_ADD_BALANCE_TRANSFER_AMOUNT_RP:-1}
-      - GOPAY_ADD_BALANCE_TRANSFER_CURRENCY=${GOPAY_ADD_BALANCE_TRANSFER_CURRENCY:-IDR}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_ENDPOINT_URL=${GOPAY_ADD_BALANCE_REKBERINAJA_ENDPOINT_URL:-https://api.rekberinaja.com/api/transaction/product/checkout}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_BEARER_TOKEN=${GOPAY_ADD_BALANCE_REKBERINAJA_BEARER_TOKEN}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_REFRESH_TOKEN=${GOPAY_ADD_BALANCE_REKBERINAJA_REFRESH_TOKEN}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_DEVICE_ID=${GOPAY_ADD_BALANCE_REKBERINAJA_DEVICE_ID}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_STORE=${GOPAY_ADD_BALANCE_REKBERINAJA_STORE:-rekberinaja}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_PRODUCT_ID=${GOPAY_ADD_BALANCE_REKBERINAJA_PRODUCT_ID}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_SERVICE_ID=${GOPAY_ADD_BALANCE_REKBERINAJA_SERVICE_ID}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_PAYMENT_METHOD=${GOPAY_ADD_BALANCE_REKBERINAJA_PAYMENT_METHOD:-saldo}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_INVOICE_EMAIL=${GOPAY_ADD_BALANCE_REKBERINAJA_INVOICE_EMAIL}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_PROMO_CODE=${GOPAY_ADD_BALANCE_REKBERINAJA_PROMO_CODE}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_USE_POIN=${GOPAY_ADD_BALANCE_REKBERINAJA_USE_POIN:-false}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_FEE_TOTAL_RP=${GOPAY_ADD_BALANCE_REKBERINAJA_FEE_TOTAL_RP:-1300}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_POLL_TIMEOUT_SECONDS=${GOPAY_ADD_BALANCE_REKBERINAJA_POLL_TIMEOUT_SECONDS:-180}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_POLL_INTERVAL_SECONDS=${GOPAY_ADD_BALANCE_REKBERINAJA_POLL_INTERVAL_SECONDS:-5}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_USER_AGENT=${GOPAY_ADD_BALANCE_REKBERINAJA_USER_AGENT:-Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_ORIGIN=${GOPAY_ADD_BALANCE_REKBERINAJA_ORIGIN:-https://rekberinaja.com}
-      - GOPAY_ADD_BALANCE_REKBERINAJA_REFERER=${GOPAY_ADD_BALANCE_REKBERINAJA_REFERER:-https://rekberinaja.com/}
-      - GOPAY_ADD_BALANCE_CONFIRM_TIMEOUT_SECONDS=${GOPAY_ADD_BALANCE_CONFIRM_TIMEOUT_SECONDS:-1800}
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
-      - TEMPORAL_TASK_QUEUE=${TEMPORAL_TASK_QUEUE:-nb-register-orchestrator}
-      - TEMPORAL_IDENTITY=gpt-orchestrator
-      - ORCHESTRATOR_PG_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
+      - GOPAY_PHONE_NUMBER=${GOPAY_PHONE_NUMBER:-}
+      - GOPAY_WA_PHONE_NUMBER=${GOPAY_WA_PHONE_NUMBER:-}
+      - GOPAY_PIN=${GOPAY_PIN:-}
+      - GOPAY_PROXY_POOL=${GOPAY_PROXY_POOL:-socks5://host.docker.internal:10810,socks5://host.docker.internal:10811,socks5://host.docker.internal:10813,http://host.docker.internal:10814}
+      - GOPAY_CHECKOUT_PROXY_URL=${GOPAY_CHECKOUT_PROXY_URL:-}
+      - GOPAY_PAYMENT_PROXY_URL=${GOPAY_PAYMENT_PROXY_URL:-}
+      - GOPAY_HMAC_KEY=${GOPAY_HMAC_KEY:-}
+      - GOPAY_X_E2=${GOPAY_X_E2:-}
+      - GOTO_CLIENT_SECRET=${GOTO_CLIENT_SECRET:-}
+      - GOTO_SSO_CLIENT_SECRET=${GOTO_SSO_CLIENT_SECRET:-}
+      - GOPAY_ADD_BALANCE_ENVELOPE_LINK=${GOPAY_ADD_BALANCE_ENVELOPE_LINK:-}
+      - GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS=${GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - account-db
-      - browser-automation
-      - mailbox-api
-      - gopay-app
-      - gopay-payment
-      - sms-service
       - postgres
-      - temporal
-    restart: always
-
-  gopay-payment:
-    build:
-      context: ../gpt
-      dockerfile: channels/gopay/payment/Dockerfile
-    ports:
-      - "${GOPAY_GRPC_PORT:-50054}:50051"
-    environment:
-      - GOPAY_COUNTRY_CODE=${GOPAY_COUNTRY_CODE:-62}
-      - GOPAY_PHONE_NUMBER=${GOPAY_PHONE_NUMBER}
-      - GOPAY_PIN=${GOPAY_PIN}
-      - GOPAY_CHECKOUT_PROXY_URL=${GOPAY_CHECKOUT_PROXY_URL}
-      - GOPAY_PAYMENT_PROXY_URL=${GOPAY_PAYMENT_PROXY_URL}
-    volumes:
-      - ../gpt/channels/gopay/payment/gopay-flow/config.json:/app/gopay-flow/config.json:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: always
-
-  gopay-app:
-    build:
-      context: ../gpt
-      dockerfile: channels/gopay/app/Dockerfile
-    ports:
-      - "127.0.0.1:${GOPAY_APP_PORT:-50060}:50051"
-    environment:
-      - GOPAY_PIN=${GOPAY_PIN}
-      - GOPAY_PHONE=${GOPAY_PHONE_NUMBER}
-      - GOPAY_PROXY_POOL=${GOPAY_PROXY_POOL:-socks5://host.docker.internal:10810,socks5://host.docker.internal:10811,socks5://host.docker.internal:10813,http://host.docker.internal:10814}
-      - GOPAY_HMAC_KEY=${GOPAY_HMAC_KEY}
-      - GOPAY_X_E2=${GOPAY_X_E2}
-      - GOTO_CLIENT_SECRET=${GOTO_CLIENT_SECRET}
-      - GOTO_SSO_CLIENT_SECRET=${GOTO_SSO_CLIENT_SECRET}
-      - GOPAY_UNIQUE_ID=${GOPAY_UNIQUE_ID}
-      - GOPAY_APPSFLYER_ID=${GOPAY_APPSFLYER_ID}
-      - GOPAY_WIDEVINE_ID=${GOPAY_WIDEVINE_ID}
-      - GOPAY_M1_SIGNATURE=${GOPAY_M1_SIGNATURE}
-      - GOPAY_SCREEN=${GOPAY_SCREEN}
-      - GOPAY_D1=${GOPAY_D1}
-      - GOPAY_STATIC_DEVICE_IDENTITY=${GOPAY_STATIC_DEVICE_IDENTITY:-false}
-      - GOPAY_OTP_TIMEOUT_SECONDS=${GOPAY_OTP_TIMEOUT_SECONDS:-180}
-      - GOPAY_APP_PORT=50051
-      - PG_DSN=host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      postgres:
-        condition: service_started
-    restart: always
-
-  checkphone-tgbot:
-    profiles:
-      - tgbot
-    build:
-      context: .
-      dockerfile: checkphone-tgbot/Dockerfile
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_ALLOWED_CHAT_IDS=${TELEGRAM_ALLOWED_CHAT_IDS:-}
-      - TELEGRAM_DROP_PENDING_UPDATES=${TELEGRAM_DROP_PENDING_UPDATES:-true}
-      - TELEGRAM_POLL_TIMEOUT_SECONDS=${TELEGRAM_POLL_TIMEOUT_SECONDS:-30}
-      - TELEGRAM_POLL_LIMIT=${TELEGRAM_POLL_LIMIT:-20}
-      - TELEGRAM_PROXY=${TELEGRAM_PROXY:-}
-      - ORCHESTRATOR_ADDR=${ORCHESTRATOR_ADDR:-orchestrator:50051}
-      - ORCHESTRATOR_GOPAY_TIMEOUT_SECONDS=${ORCHESTRATOR_GOPAY_TIMEOUT_SECONDS:-120}
-      - GOPAY_COUNTRY_CODE=${GOPAY_COUNTRY_CODE:-62}
-      - GOPAY_PROXY_POOL=${GOPAY_PROXY_POOL:-socks5://host.docker.internal:10810,socks5://host.docker.internal:10811,socks5://host.docker.internal:10813,http://host.docker.internal:10814}
-      - GOPAY_HMAC_KEY=${GOPAY_HMAC_KEY}
-      - GOPAY_X_E2=${GOPAY_X_E2}
-      - GOTO_CLIENT_SECRET=${GOTO_CLIENT_SECRET}
-      - GOPAY_UNIQUE_ID=${GOPAY_UNIQUE_ID}
-      - GOPAY_APPSFLYER_ID=${GOPAY_APPSFLYER_ID}
-      - GOPAY_WIDEVINE_ID=${GOPAY_WIDEVINE_ID}
-      - GOPAY_M1_SIGNATURE=${GOPAY_M1_SIGNATURE}
-      - GOPAY_SCREEN=${GOPAY_SCREEN}
-      - GOPAY_D1=${GOPAY_D1}
-      - GOPAY_STATIC_DEVICE_IDENTITY=${GOPAY_STATIC_DEVICE_IDENTITY:-false}
-      - GOPAY_PIN_CLIENT_ID=${GOPAY_PIN_CLIENT_ID:-6d11d261d7ae462dbd4be0dc5f36a697-MFAGOJEK}
-      - GOPAY_OTP_TIMEOUT_SECONDS=${GOPAY_OTP_TIMEOUT_SECONDS:-180}
-      - GOPAY_REQUIRED_BALANCE_RP=${GOPAY_REQUIRED_BALANCE_RP:-1}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - orchestrator
+      - browser-automation
+      - mailbox
+      - sms-service
+      - workflow-runtime
     restart: always
 
   sms-service:
@@ -324,16 +152,9 @@ services:
       - SMS_LISTEN_ADDR=:50051
       - SMS_PROVIDER=${SMS_PROVIDER:-herosms}
       - SMS_PROVIDER_API_KEY=${SMS_PROVIDER_API_KEY:-}
-      - SMS_PROVIDER_ENDPOINT=${SMS_PROVIDER_ENDPOINT:-https://hero-sms.com/stubs/handler_api.php}
-      - SMS_APPLICATION_KEY=${SMS_APPLICATION_KEY:-gopay}
-      - SMS_COUNTRY_ISO2=${SMS_COUNTRY_ISO2:-ID}
-      - SMS_COUNTRY_CALLING_CODE=${SMS_COUNTRY_CALLING_CODE:-62}
       - SMS_PROVIDER_COUNTRY_ID=${SMS_PROVIDER_COUNTRY_ID:-6}
       - SMS_UPSTREAM_SERVICE_KEY=${SMS_UPSTREAM_SERVICE_KEY:-ni}
-      - SMS_MAX_PRICE_DECIMAL=${SMS_MAX_PRICE_DECIMAL:-0.05}
-      - SMS_MAX_PRICE_CURRENCY=${SMS_MAX_PRICE_CURRENCY:-}
       - SMS_HTTP_PROXY=${SMS_HTTP_PROXY:-}
-      - SMS_HTTP_TIMEOUT_SECONDS=${SMS_HTTP_TIMEOUT_SECONDS:-20}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: always
@@ -346,15 +167,13 @@ services:
       - "${WEBUI_PORT:-8080}:8080"
     environment:
       - LISTEN_ADDR=:8080
-      - ACCOUNT_DB_ADDR=account-db:50051
-      - ORCHESTRATOR_ADDR=orchestrator:50051
-      - MAILBOX_ADDR=mailbox-api:50051
-      - PAYMENT_ADDR=gopay-payment:50051
+      - GPT_ACCOUNT_ADDR=gpt-service:50052
+      - GPT_WORKFLOW_ADDR=gpt-service:50051
+      - GPT_PAYMENT_ADDR=gpt-service:50054
+      - MAILBOX_ADDR=mailbox:50051
     depends_on:
-      - account-db
-      - orchestrator
-      - mailbox-api
-      - gopay-payment
+      - gpt-service
+      - mailbox
     restart: always
 
 volumes:

@@ -4,9 +4,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "nb-register.componentFullname" (dict "root" $ "component" $component) }}
+  name: {{ include "byte-v-forge.componentFullname" (dict "root" $ "component" $component) }}
   labels:
-    {{- include "nb-register.componentLabels" (dict "root" $ "component" $component) | nindent 4 }}
+    {{- include "byte-v-forge.componentLabels" (dict "root" $ "component" $component) | nindent 4 }}
 spec:
   replicas: {{ default 1 $workload.replicas }}
   {{- if $workload.strategyType }}
@@ -15,11 +15,11 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "nb-register.selectorLabels" (dict "root" $ "component" $component) | nindent 6 }}
+      {{- include "byte-v-forge.selectorLabels" (dict "root" $ "component" $component) | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "nb-register.selectorLabels" (dict "root" $ "component" $component) | nindent 8 }}
+        {{- include "byte-v-forge.selectorLabels" (dict "root" $ "component" $component) | nindent 8 }}
         {{- with $.Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -28,7 +28,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      serviceAccountName: {{ include "nb-register.serviceAccountName" $ }}
+      serviceAccountName: {{ include "byte-v-forge.serviceAccountName" $ }}
       {{- with $.Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -47,7 +47,7 @@ spec:
       {{- end }}
       containers:
         - name: {{ $component }}
-          image: {{ include "nb-register.image" (dict "root" $ "image" $workload.image) | quote }}
+          image: {{ include "byte-v-forge.image" (dict "root" $ "image" $workload.image) | quote }}
           imagePullPolicy: {{ default $.Values.global.imagePullPolicy $workload.imagePullPolicy }}
           {{- with $workload.command }}
           command:
@@ -74,7 +74,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "nb-register.appSecretName" $ }}
+                  name: {{ include "byte-v-forge.appSecretName" $ }}
                   key: POSTGRES_PASSWORD
             {{- end }}
             {{- range $name, $value := $workload.env }}
@@ -85,12 +85,9 @@ spec:
             - name: {{ $item.name }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "nb-register.appSecretName" $ }}
+                  name: {{ include "byte-v-forge.appSecretName" $ }}
                   key: {{ default $item.name $item.key }}
             {{- end }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "nb-register.configName" $ }}
           {{- with $workload.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
@@ -148,9 +145,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "nb-register.componentFullname" (dict "root" $ "component" $component) }}
+  name: {{ include "byte-v-forge.componentFullname" (dict "root" $ "component" $component) }}
   labels:
-    {{- include "nb-register.componentLabels" (dict "root" $ "component" $component) | nindent 4 }}
+    {{- include "byte-v-forge.componentLabels" (dict "root" $ "component" $component) | nindent 4 }}
 spec:
   type: {{ default "ClusterIP" $workload.service.type }}
   ports:
@@ -164,7 +161,7 @@ spec:
       {{- end }}
     {{- end }}
   selector:
-    {{- include "nb-register.selectorLabels" (dict "root" $ "component" $component) | nindent 4 }}
+    {{- include "byte-v-forge.selectorLabels" (dict "root" $ "component" $component) | nindent 4 }}
 {{- end }}
 {{- end }}
 {{- end }}

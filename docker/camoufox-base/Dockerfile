@@ -38,12 +38,12 @@ RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debi
         xvfb \
     && rm -rf /var/lib/apt/lists/*
 
-COPY register_requirements.txt /tmp/nb-register-requirements.txt
+COPY register_requirements.txt /tmp/byte-v-forge-requirements.txt
 ARG CAMOUFOX_FETCH_PROXY=http://host.docker.internal:10809
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \
-    && pip install --no-cache-dir -r /tmp/nb-register-requirements.txt \
+    && pip install --no-cache-dir -r /tmp/byte-v-forge-requirements.txt \
     && HTTP_PROXY=${CAMOUFOX_FETCH_PROXY} HTTPS_PROXY=${CAMOUFOX_FETCH_PROXY} python -m camoufox fetch \
-    && rm /tmp/nb-register-requirements.txt
+    && rm /tmp/byte-v-forge-requirements.txt
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libxt6 \

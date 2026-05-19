@@ -1,0 +1,67 @@
+global:
+  imageRegistry: registry.example.internal/byte-v-forge
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+
+workloads:
+  gpt-service:
+    image:
+      repository: gpt-service
+      tag: dev
+  mailbox:
+    image:
+      repository: mailbox
+      tag: dev
+  browser-automation:
+    image:
+      repository: browser-automation
+      tag: dev
+  workflow-runtime:
+    image:
+      repository: workflow-runtime
+      tag: dev
+  sms-service:
+    image:
+      repository: sms-service
+      tag: dev
+  webui:
+    image:
+      repository: webui
+      tag: dev
+
+ingress:
+  webui:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: byte-v-forge.example.internal
+        paths:
+          - path: /
+            pathType: Prefix
+  webhook:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: byte-v-forge-webhook.example.internal
+        paths:
+          - path: /
+            pathType: Prefix
+
+secrets:
+  stringData:
+    POSTGRES_PASSWORD: change-me
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
+    SMS_PROVIDER_API_KEY: ""
+    SMS_HTTP_PROXY: ""
+    GOPAY_PHONE_NUMBER: ""
+    GOPAY_WA_PHONE_NUMBER: ""
+    GOPAY_PIN: ""
+    GOPAY_PROXY_POOL: socks5://proxy.internal:10810,socks5://proxy.internal:10811,socks5://proxy.internal:10813,http://proxy.internal:10814
+    GOPAY_CHECKOUT_PROXY_URL: ""
+    GOPAY_PAYMENT_PROXY_URL: ""
+    GOPAY_HMAC_KEY: ""
+    GOPAY_X_E2: ""
+    GOTO_CLIENT_SECRET: ""
+    GOTO_SSO_CLIENT_SECRET: ""
+    GOPAY_ADD_BALANCE_ENVELOPE_LINK: ""
+    GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS: ""

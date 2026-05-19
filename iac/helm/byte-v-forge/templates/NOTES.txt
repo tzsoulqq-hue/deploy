@@ -1,4 +1,4 @@
-NB Register chart rendered.
+Byte V Forge chart rendered.
 
 Validate:
   helm lint {{ .Chart.Name }} -f values.local.yaml

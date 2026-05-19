@@ -7,8 +7,8 @@
 部署变量变更需要同步检查：
 
 - `docker-compose.yml`
-- `iac/helm/nb-register/values.yaml`
-- `iac/helm/nb-register/templates/`
+- `iac/helm/byte-v-forge/values.yaml`
+- `iac/helm/byte-v-forge/templates/`
 - `.env.example`
 - `scripts/`
 
@@ -16,7 +16,7 @@
 
 ```sh
 bash -n scripts/deploy-remote.sh scripts/logs-remote.sh
-helm lint iac/helm/nb-register
-helm template nb-register iac/helm/nb-register --namespace nb-register >/tmp/nb-register.yaml
-docker compose --env-file .env.example config >/tmp/nb-register-compose.yaml
+helm lint iac/helm/byte-v-forge
+helm template byte-v-forge iac/helm/byte-v-forge --namespace byte-v-forge >/tmp/byte-v-forge.yaml
+docker compose --env-file .env.example config >/tmp/byte-v-forge-compose.yaml
 ```

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: byte-v-forge
+description: Kubernetes IaC for Byte V Forge
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+icon: https://byte-v-forge.local/icon.svg

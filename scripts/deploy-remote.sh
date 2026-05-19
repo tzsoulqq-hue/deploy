@@ -5,25 +5,25 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 DEPLOY_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 SOURCE_ROOT=${SOURCE_ROOT:-$(cd -- "$DEPLOY_DIR/.." && pwd)}
 REMOTE_HOST=${REMOTE_HOST:-pood1e@192.168.0.126}
-REMOTE_DIR=${REMOTE_DIR:-/tmp/nb-register-build-src}
-REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/nb-register-business.yaml}
+REMOTE_DIR=${REMOTE_DIR:-/tmp/byte-v-forge-build-src}
+REMOTE_KUBECONFIG=${REMOTE_KUBECONFIG:-/tmp/self-hosted-business-kubeconfigs/byte-v-forge-business.yaml}
 REMOTE_HELM=${REMOTE_HELM:-/home/pood1e/.local/bin/helm}
-RELEASE=${RELEASE:-nb-register}
-NAMESPACE=${NAMESPACE:-nb-register}
+RELEASE=${RELEASE:-byte-v-forge}
+NAMESPACE=${NAMESPACE:-byte-v-forge}
 if [[ -z "${CHART_DIR+x}" ]]; then
-  CHART_DIR=$REMOTE_DIR/iac/helm/nb-register
+  CHART_DIR=$REMOTE_DIR/iac/helm/byte-v-forge
   CHART_DIR_DEFAULTED=true
 else
   CHART_DIR_DEFAULTED=false
 fi
-VALUES_FILE=${VALUES_FILE:-/tmp/nb-register-deploy-values-live.yaml}
-IMAGE_PREFIX=${IMAGE_PREFIX:-nb-register}
+VALUES_FILE=${VALUES_FILE:-/tmp/byte-v-forge-deploy-values-live.yaml}
+IMAGE_PREFIX=${IMAGE_PREFIX:-byte-v-forge}
 TAG=${TAG:-deploy-$(date +%Y%m%d%H%M%S)}
 HELM_TIMEOUT=${HELM_TIMEOUT:-10m}
 ROLLOUT_TIMEOUT=${ROLLOUT_TIMEOUT:-5m}
 
 IMPORT_METHOD=${IMPORT_METHOD:-auto}
-VM_NAME=${VM_NAME:-nb-register-business-1}
+VM_NAME=${VM_NAME:-byte-v-forge-business-1}
 IMPORT_HOST_IP=${IMPORT_HOST_IP:-192.168.122.1}
 IMPORT_HTTP_BIND=${IMPORT_HTTP_BIND:-$IMPORT_HOST_IP}
 IMPORT_HTTP_PORT=${IMPORT_HTTP_PORT:-31888}
@@ -40,15 +40,12 @@ SKIP_VALIDATE=${SKIP_VALIDATE:-false}
 KEEP_REMOTE_TAR=${KEEP_REMOTE_TAR:-false}
 
 ALL_SERVICES=(
-  account-db
   browser-automation
+  workflow-runtime
   webui
-  gopay-app
-  gopay-payment
+  gpt-service
+  mailbox
   sms-service
-  orchestrator
-  outlook-imap-service
-  mailbox-api
 )
 
 usage() {
@@ -57,8 +54,8 @@ Usage:
   scripts/deploy-remote.sh [options] <service...|all>
 
 Examples:
-  scripts/deploy-remote.sh gopay-app webui
-  scripts/deploy-remote.sh orchestrator gopay-app gopay-payment
+  scripts/deploy-remote.sh gpt-service webui
+  scripts/deploy-remote.sh mailbox browser-automation
   scripts/deploy-remote.sh --tag deploy-test-1 webui
   scripts/deploy-remote.sh all
 
@@ -68,8 +65,8 @@ Options:
   --remote-dir DIR          Remote source/build directory.
   --chart-dir DIR           Remote Helm chart directory.
   --values FILE             Remote Helm values file used for install/upgrade.
-  --release NAME            Helm release. Default: nb-register
-  --namespace NAME          Kubernetes namespace. Default: nb-register
+  --release NAME            Helm release. Default: byte-v-forge
+  --namespace NAME          Kubernetes namespace. Default: byte-v-forge
   --skip-sync               Do not rsync this workspace to the remote host.
   --skip-build              Do not docker build images.
   --skip-import             Do not import images into the k3s node.
@@ -105,7 +102,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|mailbox-api)
+    browser-automation|workflow-runtime|webui|gpt-service|mailbox|sms-service)
       return 0
       ;;
     *)
@@ -127,10 +124,10 @@ needs_camoufox_base() {
 
 docker_context() {
   case "$1" in
-    account-db|gopay-app|gopay-payment|orchestrator)
+    gpt-service)
       printf 'gpt'
       ;;
-    outlook-imap-service|mailbox-api)
+    mailbox)
       printf 'mailbox'
       ;;
     webui)
@@ -138,6 +135,9 @@ docker_context() {
       ;;
     browser-automation)
       printf 'browser-automation'
+      ;;
+    workflow-runtime)
+      printf 'workflow-runtime'
       ;;
     sms-service)
       printf 'sms'
@@ -147,22 +147,19 @@ docker_context() {
 
 dockerfile_path() {
   case "$1" in
-    gopay-app)
-      printf 'channels/gopay/app/Dockerfile'
+    gpt-service)
+      printf 'gpt-service/Dockerfile'
       ;;
-    gopay-payment)
-      printf 'channels/gopay/payment/Dockerfile'
-      ;;
-    outlook-imap-service)
-      printf 'providers/outlook/imap-service/Dockerfile'
-      ;;
-    mailbox-api)
-      printf 'services/mailbox-api/Dockerfile'
+    mailbox)
+      printf 'Dockerfile'
       ;;
     sms-service)
       printf 'Dockerfile'
       ;;
     browser-automation)
+      printf 'Dockerfile'
+      ;;
+    workflow-runtime)
       printf 'Dockerfile'
       ;;
     *)
@@ -218,7 +215,7 @@ parse_args() {
         [[ $# -ge 2 ]] || die "--remote-dir requires a value"
         REMOTE_DIR=$2
         if [[ "$CHART_DIR_DEFAULTED" == "true" ]]; then
-          CHART_DIR=$REMOTE_DIR/iac/helm/nb-register
+          CHART_DIR=$REMOTE_DIR/iac/helm/byte-v-forge
         fi
         shift 2
         ;;
@@ -347,7 +344,6 @@ sync_source() {
     --exclude 'browser-automation/' \
     --exclude 'gopay-capture/' \
     --exclude 'gopay-emulator/*.mitm' \
-    --exclude 'gopay-payment/gopay-flow/config.json' \
     "$DEPLOY_DIR/" "$REMOTE_HOST:$REMOTE_DIR/"
 
   sync_one_repo gpt "$SOURCE_ROOT/gpt" "$REMOTE_DIR/gpt"
@@ -355,6 +351,7 @@ sync_source() {
   sync_one_repo webui "$SOURCE_ROOT/webui" "$REMOTE_DIR/webui"
   sync_one_repo sms "$SOURCE_ROOT/sms" "$REMOTE_DIR/sms"
   sync_one_repo browser-automation "$SOURCE_ROOT/browser-automation" "$REMOTE_DIR/browser-automation"
+  sync_one_repo workflow-runtime "$SOURCE_ROOT/workflow-runtime" "$REMOTE_DIR/workflow-runtime"
 }
 
 build_camoufox_base_if_needed() {
@@ -378,8 +375,8 @@ build_camoufox_base_if_needed() {
     return
   fi
 
-  log "build nb-register-camoufox-base:latest"
-  remote "cd $(shell_quote "$REMOTE_DIR") && docker build $CAMOUFOX_BASE_BUILD_FLAGS --build-arg CAMOUFOX_FETCH_PROXY=$(shell_quote "$CAMOUFOX_FETCH_PROXY") -t nb-register-camoufox-base:latest -f docker/camoufox-base/Dockerfile docker/camoufox-base"
+  log "build byte-v-forge-camoufox-base:latest"
+  remote "cd $(shell_quote "$REMOTE_DIR") && docker build $CAMOUFOX_BASE_BUILD_FLAGS --build-arg CAMOUFOX_FETCH_PROXY=$(shell_quote "$CAMOUFOX_FETCH_PROXY") -t byte-v-forge-camoufox-base:latest -f docker/camoufox-base/Dockerfile docker/camoufox-base"
 }
 
 build_images() {
@@ -405,7 +402,7 @@ build_images() {
 }
 
 save_images() {
-  REMOTE_TAR=/tmp/nb-register-images-${TAG}.tar
+  REMOTE_TAR=/tmp/byte-v-forge-images-${TAG}.tar
   if [[ "$SKIP_BUILD" == "true" || "$SKIP_IMPORT" == "true" ]]; then
     return
   fi
@@ -443,8 +440,8 @@ command -v python3 >/dev/null 2>&1 || die "python3 is not available on remote ho
 tar_dir=$(dirname "$TAR_PATH")
 tar_name=$(basename "$TAR_PATH")
 url="http://${IMPORT_HOST_IP}:${IMPORT_HTTP_PORT}/${tar_name}"
-pidfile="/tmp/nb-register-import-http-${IMPORT_HTTP_PORT}.pid"
-logfile="/tmp/nb-register-import-http-${IMPORT_HTTP_PORT}.log"
+pidfile="/tmp/byte-v-forge-import-http-${IMPORT_HTTP_PORT}.pid"
+logfile="/tmp/byte-v-forge-import-http-${IMPORT_HTTP_PORT}.log"
 
 cleanup() {
   if [[ -f "$pidfile" ]]; then
@@ -560,7 +557,7 @@ import_images() {
 }
 
 write_overlay() {
-  OVERLAY_FILE=/tmp/nb-register-deploy-overlay-${TAG}.yaml
+  OVERLAY_FILE=/tmp/byte-v-forge-deploy-overlay-${TAG}.yaml
   local tmp
   tmp=$(mktemp)
   {
