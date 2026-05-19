@@ -51,7 +51,6 @@ ALL_SERVICES=(
   outlook-imap-service
   outlook-register-service
   mailbox-api
-  otp-relay
 )
 
 usage() {
@@ -108,7 +107,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
+    account-db|browser-reg|browser-automation|webui|gopay-app|gopay-payment|sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api)
       return 0
       ;;
     *)
@@ -144,9 +143,6 @@ docker_context() {
       ;;
     sms-service)
       printf 'sms'
-      ;;
-    otp-relay)
-      printf '.'
       ;;
   esac
 }
@@ -357,7 +353,6 @@ sync_source() {
     --exclude 'webui/' \
     --exclude 'sms/' \
     --exclude 'browser-automation/' \
-    --exclude 'otp-relay/' \
     --exclude 'gopay-capture/' \
     --exclude 'gopay-emulator/*.mitm' \
     --exclude 'gopay-payment/gopay-flow/config.json' \
@@ -368,7 +363,6 @@ sync_source() {
   sync_one_repo webui "$SOURCE_ROOT/webui" "$REMOTE_DIR/webui"
   sync_one_repo sms "$SOURCE_ROOT/sms" "$REMOTE_DIR/sms"
   sync_one_repo browser-automation "$SOURCE_ROOT/browser-automation" "$REMOTE_DIR/browser-automation"
-  sync_one_repo otp-relay "$SOURCE_ROOT/otp-relay" "$REMOTE_DIR/otp-relay"
 }
 
 build_camoufox_base_if_needed() {

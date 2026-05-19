@@ -27,9 +27,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "nb-register.componentFullname" (dict "root" $ "component" "otp-relay") }}
+                name: {{ include "nb-register.componentFullname" (dict "root" $ "component" "orchestrator") }}
                 port:
-                  number: 8081
+                  name: http-webhook
           {{- end }}
     {{- end }}
 {{- end }}

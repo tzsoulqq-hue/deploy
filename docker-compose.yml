@@ -53,6 +53,7 @@ services:
       - BROWSER_AUTOMATION_ARTIFACTS_DIR=${BROWSER_AUTOMATION_ARTIFACTS_DIR:-/tmp/browser-automation-artifacts}
       - BROWSER_AUTOMATION_CAMOUFOX_HEADLESS=${BROWSER_AUTOMATION_CAMOUFOX_HEADLESS:-true}
       - BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS=${BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS:-120}
+      - BROWSER_AUTOMATION_PROXY_REFS_JSON=${BROWSER_AUTOMATION_PROXY_REFS_JSON:-{}}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     shm_size: "2gb"
@@ -167,6 +168,7 @@ services:
       dockerfile: orchestrator/Dockerfile
     ports:
       - "${ORCHESTRATOR_GRPC_PORT:-50055}:50051" # API
+      - "0.0.0.0:${GOPAY_WEBHOOK_PORT:-8081}:8081"
     environment:
       - LISTEN_ADDR=:50051
       - BROWSER_ADDR=${BROWSER_ADDR:-browser-reg:50051}
@@ -186,8 +188,10 @@ services:
       - SMS_POLL_INTERVAL_SECONDS=${SMS_POLL_INTERVAL_SECONDS:-5}
       - ACCOUNT_DB_ADDR=account-db:50051
       - MAILBOX_ADDR=${MAILBOX_ADDR:-mailbox-api:50051}
-      - GOPAY_OTP_SERVICE_ADDR=${GOPAY_OTP_SERVICE_ADDR:-otp-relay:50051}
       - GOPAY_OTP_TIMEOUT_SECONDS=${GOPAY_OTP_TIMEOUT_SECONDS:-180}
+      - GOPAY_OTP_WEBHOOK_LISTEN_ADDR=${GOPAY_OTP_WEBHOOK_LISTEN_ADDR:-:8081}
+      - GOPAY_OTP_WEBHOOK_TTL_SECONDS=${GOPAY_OTP_WEBHOOK_TTL_SECONDS:-600}
+      - GOPAY_OTP_WEBHOOK_MAX_ITEMS=${GOPAY_OTP_WEBHOOK_MAX_ITEMS:-100}
       - REGISTRATION_OTP_TIMEOUT_SECONDS=${REGISTRATION_OTP_TIMEOUT_SECONDS:-180}
       - GOPAY_CHANGE_PHONE_DISABLED=${GOPAY_CHANGE_PHONE_DISABLED:-false}
       - GOPAY_CHANGE_PHONE_MAX_FAILURES=${GOPAY_CHANGE_PHONE_MAX_FAILURES:-3}
@@ -230,7 +234,6 @@ services:
       - mailbox-api
       - gopay-app
       - gopay-payment
-      - otp-relay
       - sms-service
       - postgres
       - temporal
@@ -252,20 +255,6 @@ services:
       - ../gpt/channels/gopay/payment/gopay-flow/config.json:/app/gopay-flow/config.json:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: always
-
-  otp-relay:
-    build:
-      context: .
-      dockerfile: otp-relay/Dockerfile
-    ports:
-      - "127.0.0.1:${OTP_RELAY_GRPC_PORT:-50057}:50051"
-      - "0.0.0.0:${GOPAY_WEBHOOK_PORT:-8081}:8081"
-    environment:
-      - OTP_RELAY_GRPC_LISTEN=:50051
-      - OTP_RELAY_HTTP_LISTEN=0.0.0.0:8081
-      - OTP_RELAY_TTL_SECONDS=${OTP_RELAY_TTL_SECONDS:-600}
-      - OTP_RELAY_MAX_ITEMS=${OTP_RELAY_MAX_ITEMS:-100}
     restart: always
 
   gopay-app:

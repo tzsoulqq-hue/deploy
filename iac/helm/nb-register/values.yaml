@@ -60,6 +60,9 @@ configEnv:
 
   GOPAY_COUNTRY_CODE: "62"
   GOPAY_OTP_TIMEOUT_SECONDS: "180"
+  GOPAY_OTP_WEBHOOK_LISTEN_ADDR: ":8081"
+  GOPAY_OTP_WEBHOOK_TTL_SECONDS: "600"
+  GOPAY_OTP_WEBHOOK_MAX_ITEMS: "100"
   GOPAY_CHANGE_PHONE_DISABLED: "false"
   GOPAY_CHANGE_PHONE_MAX_FAILURES: "3"
   GOPAY_CHANGE_PHONE_OTP_RETRY_ATTEMPTS: "1"
@@ -83,9 +86,6 @@ configEnv:
   GOPAY_ADD_BALANCE_REKBERINAJA_ORIGIN: https://rekberinaja.com
   GOPAY_ADD_BALANCE_REKBERINAJA_REFERER: https://rekberinaja.com/
   GOPAY_ADD_BALANCE_CONFIRM_TIMEOUT_SECONDS: "1800"
-
-  OTP_RELAY_TTL_SECONDS: "600"
-  OTP_RELAY_MAX_ITEMS: "100"
 
   SMS_PROVIDER: herosms
   SMS_PROVIDER_ENDPOINT: https://hero-sms.com/stubs/handler_api.php
@@ -112,6 +112,7 @@ secrets:
     POSTGRES_PASSWORD: nb_register
 
     REGISTER_PROXY_URL: "socks5://proxy.internal:10813"
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: "{}"
     OUTLOOK_REGISTER_PROXY: ""
     OUTLOOK_REGISTER_OAUTH_PROOF_EMAIL: ""
 
@@ -386,6 +387,9 @@ workloads:
       BROWSER_AUTOMATION_ARTIFACTS_DIR: '{{ .Values.configEnv.BROWSER_AUTOMATION_ARTIFACTS_DIR }}'
       BROWSER_AUTOMATION_CAMOUFOX_HEADLESS: '{{ .Values.configEnv.BROWSER_AUTOMATION_CAMOUFOX_HEADLESS }}'
       BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS: '{{ .Values.configEnv.BROWSER_AUTOMATION_CAMOUFOX_TASK_TIMEOUT_SECONDS }}'
+    secretEnv:
+      - name: BROWSER_AUTOMATION_PROXY_REFS_JSON
+        key: BROWSER_AUTOMATION_PROXY_REFS_JSON
     ports:
       - name: grpc
         containerPort: 50051
@@ -533,36 +537,6 @@ workloads:
       tcpSocketPort: grpc
     resources: {}
 
-  otp-relay:
-    enabled: true
-    replicas: 1
-    image:
-      repository: nb-register/otp-relay
-      tag: latest
-    env:
-      OTP_RELAY_GRPC_LISTEN: ":50051"
-      OTP_RELAY_HTTP_LISTEN: "0.0.0.0:8081"
-    ports:
-      - name: grpc
-        containerPort: 50051
-      - name: http
-        containerPort: 8081
-    service:
-      enabled: true
-      type: ClusterIP
-      ports:
-        - name: grpc
-          port: 50051
-          targetPort: grpc
-        - name: http
-          port: 8081
-          targetPort: http
-    probes:
-      httpGet:
-        path: /health
-        port: http
-    resources: {}
-
   orchestrator:
     enabled: true
     replicas: 1
@@ -585,7 +559,9 @@ workloads:
       SMS_POLL_INTERVAL_SECONDS: '{{ .Values.configEnv.SMS_POLL_INTERVAL_SECONDS }}'
       ACCOUNT_DB_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "account-db") }}:50051'
       MAILBOX_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "mailbox-api") }}:50051'
-      GOPAY_OTP_SERVICE_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
+      GOPAY_OTP_WEBHOOK_LISTEN_ADDR: '{{ .Values.configEnv.GOPAY_OTP_WEBHOOK_LISTEN_ADDR }}'
+      GOPAY_OTP_WEBHOOK_TTL_SECONDS: '{{ .Values.configEnv.GOPAY_OTP_WEBHOOK_TTL_SECONDS }}'
+      GOPAY_OTP_WEBHOOK_MAX_ITEMS: '{{ .Values.configEnv.GOPAY_OTP_WEBHOOK_MAX_ITEMS }}'
       TEMPORAL_ADDRESS: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'
       TEMPORAL_NAMESPACE: '{{ .Values.configEnv.TEMPORAL_NAMESPACE }}'
       TEMPORAL_TASK_QUEUE: '{{ .Values.configEnv.TEMPORAL_TASK_QUEUE }}'
@@ -617,6 +593,8 @@ workloads:
     ports:
       - name: grpc
         containerPort: 50051
+      - name: http-webhook
+        containerPort: 8081
     service:
       enabled: true
       type: ClusterIP
@@ -624,6 +602,9 @@ workloads:
         - name: grpc
           port: 50051
           targetPort: grpc
+        - name: http-webhook
+          port: 8081
+          targetPort: http-webhook
     probes:
       tcpSocketPort: grpc
     resources: {}

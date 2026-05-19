@@ -40,10 +40,6 @@ workloads:
     image:
       repository: gopay-payment
       tag: dev
-  otp-relay:
-    image:
-      repository: otp-relay
-      tag: dev
   gopay-app:
     image:
       repository: gopay-app
