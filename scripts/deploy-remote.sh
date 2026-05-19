@@ -148,6 +148,9 @@ dockerfile_path() {
     workflow-runtime)
       printf 'Dockerfile'
       ;;
+    webui)
+      printf 'Dockerfile'
+      ;;
     *)
       printf '%s/Dockerfile' "$1"
       ;;
