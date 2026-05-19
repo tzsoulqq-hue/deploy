@@ -183,7 +183,7 @@ gopayPaymentConfig:
       payment: ""
 
 ingress:
-  dashboard:
+  webui:
     enabled: false
     className: ""
     annotations: {}
@@ -562,11 +562,11 @@ workloads:
       tcpSocketPort: grpc
     resources: {}
 
-  dashboard:
+  webui:
     enabled: true
     replicas: 1
     image:
-      repository: nb-register/dashboard
+      repository: nb-register/webui
       tag: latest
     env:
       LISTEN_ADDR: ":8080"
@@ -574,8 +574,6 @@ workloads:
       ORCHESTRATOR_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "orchestrator") }}:50051'
       MAILBOX_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "mailbox-api") }}:50051'
       PAYMENT_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "gopay-payment") }}:50051'
-      EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
-      MAILBOX_REGISTER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-register-service") }}:50051'
     ports:
       - name: http
         containerPort: 8080

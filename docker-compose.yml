@@ -324,28 +324,24 @@ services:
         condition: service_started
     restart: always
 
-  dashboard:
+  webui:
     build:
       context: .
-      dockerfile: dashboard/Dockerfile
+      dockerfile: webui/Dockerfile
     ports:
-      - "${DASHBOARD_PORT:-8080}:8080"
+      - "${WEBUI_PORT:-8080}:8080"
     environment:
       - LISTEN_ADDR=:8080
       - ACCOUNT_DB_ADDR=account-db:50051
       - ORCHESTRATOR_ADDR=orchestrator:50051
       - MAILBOX_ADDR=mailbox-api:50051
       - PAYMENT_ADDR=gopay-payment:50051
-      - EMAIL_ADDR=outlook-imap-service:50051
-      - MAILBOX_REGISTER_ADDR=outlook-register-service:50051
       - MAILBOX_REGISTER_TIMEOUT_SECONDS=${MAILBOX_REGISTER_TIMEOUT_SECONDS:-1800}
     depends_on:
       - account-db
       - orchestrator
       - mailbox-api
       - gopay-payment
-      - outlook-imap-service
-      - outlook-register-service
     restart: always
 
   browser-reg:

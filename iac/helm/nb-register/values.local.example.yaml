@@ -12,9 +12,9 @@ workloads:
     image:
       repository: orchestrator
       tag: dev
-  dashboard:
+  webui:
     image:
-      repository: dashboard
+      repository: webui
       tag: dev
   outlook-imap-service:
     image:
@@ -49,7 +49,7 @@ workloads:
       repository: herosms-sms-service
       tag: dev
 ingress:
-  dashboard:
+  webui:
     enabled: true
     className: nginx
     hosts:

@@ -39,7 +39,7 @@ KEEP_REMOTE_TAR=${KEEP_REMOTE_TAR:-false}
 ALL_SERVICES=(
   account-db
   browser-reg
-  dashboard
+  webui
   gopay-app
   gopay-payment
   herosms-sms-service
@@ -56,9 +56,9 @@ Usage:
   scripts/deploy-remote.sh [options] <service...|all>
 
 Examples:
-  scripts/deploy-remote.sh gopay-app dashboard
+  scripts/deploy-remote.sh gopay-app webui
   scripts/deploy-remote.sh orchestrator gopay-app gopay-payment
-  scripts/deploy-remote.sh --tag deploy-test-1 dashboard
+  scripts/deploy-remote.sh --tag deploy-test-1 webui
   scripts/deploy-remote.sh all
 
 Options:
@@ -104,7 +104,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    account-db|browser-reg|dashboard|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
+    account-db|browser-reg|webui|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
       return 0
       ;;
     *)
@@ -126,7 +126,7 @@ needs_camoufox_base() {
 
 docker_context() {
   case "$1" in
-    account-db|browser-reg|dashboard|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
+    account-db|browser-reg|webui|gopay-app|gopay-payment|herosms-sms-service|orchestrator|outlook-imap-service|outlook-register-service|mailbox-api|otp-relay)
       printf '.'
       ;;
   esac

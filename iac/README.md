@@ -1,6 +1,6 @@
 # NB Register IaC
 
-此目录承载 Kubernetes 安装变量和 Helm chart。业务 `.env` 不直接用于集群安装；集群变量统一写到 Helm values。
+此目录承载 Kubernetes 安装变量和 Helm chart。集群变量统一写到 Helm values。
 
 ## 目录
 
@@ -16,9 +16,9 @@ iac/
 - `configEnv`：非敏感运行参数，渲染为 ConfigMap。
 - `secrets.stringData`：敏感参数，渲染为 Secret。
 - `workloads`：每个服务的镜像、端口、探针、挂载和副本数。
-- `ingress`：dashboard 和 OTP webhook 的外部入口。
+- `ingress`：WebUI 和 OTP webhook 的外部入口。
 
-`host.docker.internal` 不适用于 Kubernetes。代理地址要改成集群可达的 Service、内网 IP 或 egress proxy。
+Kubernetes 部署中的代理地址使用集群可达的 Service、内网 IP 或 egress proxy。
 
 ## 使用
 
