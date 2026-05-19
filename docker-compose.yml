@@ -111,7 +111,7 @@ services:
     environment:
       - LISTEN_ADDR=:50051
       - MAILBOX_API_PG_DSN=${MAILBOX_API_PG_DSN:-host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable}
-      - EMAIL_ADDR=outlook-imap-service:50051
+      - MAILBOX_EMAIL_SERVICE_ADDR=outlook-imap-service:50051
       - MAILBOX_REGISTER_ADDR=outlook-register-service:50051
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}

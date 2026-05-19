@@ -299,7 +299,7 @@ workloads:
     env:
       LISTEN_ADDR: ":50051"
       MAILBOX_API_PG_DSN: '{{ include "nb-register.pgDsn" . }}'
-      EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
+      MAILBOX_EMAIL_SERVICE_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
       MAILBOX_REGISTER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-register-service") }}:50051'
       TEMPORAL_ADDRESS: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'
       TEMPORAL_NAMESPACE: '{{ .Values.configEnv.TEMPORAL_NAMESPACE }}'
