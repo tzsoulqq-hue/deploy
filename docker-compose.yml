@@ -107,12 +107,14 @@ services:
       context: .
       dockerfile: services/mailbox-api/Dockerfile
     ports:
-      - "${MAILBOX_API_GRPC_PORT:-50057}:50051"
+      - "${MAILBOX_API_GRPC_PORT:-50058}:50051"
     environment:
       - LISTEN_ADDR=:50051
+      - MAILBOX_API_PG_DSN=${MAILBOX_API_PG_DSN:-host=postgres user=${POSTGRES_USER:-nb_register} password=${POSTGRES_PASSWORD:-nb_register} dbname=${POSTGRES_DB:-nb_register} port=5432 sslmode=disable}
       - EMAIL_ADDR=outlook-imap-service:50051
       - MAILBOX_REGISTER_ADDR=outlook-register-service:50051
     depends_on:
+      - postgres
       - outlook-imap-service
       - outlook-register-service
     restart: always

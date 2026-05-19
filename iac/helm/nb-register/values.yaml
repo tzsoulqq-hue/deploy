@@ -296,8 +296,10 @@ workloads:
     image:
       repository: nb-register/mailbox-api
       tag: latest
+    postgresEnv: true
     env:
       LISTEN_ADDR: ":50051"
+      MAILBOX_API_PG_DSN: '{{ include "nb-register.pgDsn" . }}'
       EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
       MAILBOX_REGISTER_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-register-service") }}:50051'
     ports:
