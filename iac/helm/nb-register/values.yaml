@@ -328,7 +328,6 @@ workloads:
       tag: latest
     env:
       GRPC_PORT: "50051"
-      EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
     secretEnv:
       - name: PROXY_URL
         key: REGISTER_PROXY_URL
@@ -525,7 +524,7 @@ workloads:
       GOPAY_APP_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "gopay-app") }}:50051'
       SMS_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "herosms-sms-service") }}:50051'
       ACCOUNT_DB_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "account-db") }}:50051'
-      EMAIL_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "outlook-imap-service") }}:50051'
+      MAILBOX_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "mailbox-api") }}:50051'
       OTP_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
       GOPAY_OTP_SERVICE_ADDR: '{{ include "nb-register.componentFullname" (dict "root" . "component" "otp-relay") }}:50051'
       TEMPORAL_ADDRESS: '{{ include "nb-register.componentFullname" (dict "root" . "component" "temporal") }}:7233'

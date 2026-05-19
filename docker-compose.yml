@@ -157,7 +157,7 @@ services:
       - GOPAY_PIN=${GOPAY_PIN}
       - SMS_ADDR=${SMS_ADDR:-herosms-sms-service:50051}
       - ACCOUNT_DB_ADDR=account-db:50051
-      - EMAIL_ADDR=outlook-imap-service:50051
+      - MAILBOX_ADDR=${MAILBOX_ADDR:-mailbox-api:50051}
       - OTP_ADDR=${OTP_ADDR:-otp-relay:50051}
       - GOPAY_OTP_SERVICE_ADDR=${GOPAY_OTP_SERVICE_ADDR:-otp-relay:50051}
       - GOPAY_OTP_TIMEOUT_SECONDS=${GOPAY_OTP_TIMEOUT_SECONDS:-180}
@@ -200,11 +200,10 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - account-db
+      - mailbox-api
       - gopay-app
       - gopay-payment
       - otp-relay
-      - outlook-imap-service
-      - outlook-register-service
       - herosms-sms-service
       - postgres
       - temporal
@@ -361,7 +360,6 @@ services:
     environment:
       - GRPC_PORT=50051
       - PROXY_URL=${REGISTER_PROXY_URL:-socks5://host.docker.internal:10813}
-      - EMAIL_ADDR=outlook-imap-service:50051
       - BROWSER_CHECK_PLUS_TRIAL=${BROWSER_CHECK_PLUS_TRIAL:-false}
       - CAMOUFOX_GEOIP=${CAMOUFOX_GEOIP:-true}
       - BROWSER_REG_BLOCK_IMAGES=${BROWSER_REG_BLOCK_IMAGES:-false}
