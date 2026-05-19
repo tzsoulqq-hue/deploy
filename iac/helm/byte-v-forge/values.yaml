@@ -21,6 +21,7 @@ configEnv:
   WORKFLOW_RUNTIME_NAMESPACE: default
   GPT_WORKFLOW_RUNTIME_TASK_QUEUE: byte-v-forge-gpt-service
   MAILBOX_WORKFLOW_RUNTIME_TASK_QUEUE: byte-v-forge-mailbox-service
+  MAILBOX_WEBHOOK_HTTP_ADDR: ":8082"
   SMS_PROVIDER: herosms
   SMS_PROVIDER_COUNTRY_ID: "6"
   SMS_UPSTREAM_SERVICE_KEY: ni
@@ -32,6 +33,8 @@ secrets:
   stringData:
     POSTGRES_PASSWORD: byte_v_forge
     BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
+    MAILBOX_WEBHOOK_TOKEN: ""
+    MAILBOX_FRPC_CONFIG: ""
     SMS_PROVIDER_API_KEY: ""
     SMS_HTTP_PROXY: ""
     GOPAY_PHONE_NUMBER: ""
@@ -185,15 +188,23 @@ workloads:
     env:
       MAILBOX_LISTEN_ADDR: ":50051"
       MAILBOX_OUTLOOK_INTERNAL_ADDR: "127.0.0.1:50052"
+      MAILBOX_WEBHOOK_HTTP_ADDR: '{{ .Values.configEnv.MAILBOX_WEBHOOK_HTTP_ADDR }}'
       MAILBOX_PG_DSN: '{{ include "byte-v-forge.pgDsn" . }}'
       BROWSER_AUTOMATION_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "browser-automation") }}:50051'
       WORKFLOW_RUNTIME_ADDRESS: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime") }}:7233'
       WORKFLOW_RUNTIME_NAMESPACE: '{{ .Values.configEnv.WORKFLOW_RUNTIME_NAMESPACE }}'
       WORKFLOW_RUNTIME_TASK_QUEUE: '{{ .Values.configEnv.MAILBOX_WORKFLOW_RUNTIME_TASK_QUEUE }}'
       WORKFLOW_RUNTIME_IDENTITY: mailbox
+    secretEnv:
+      - name: MAILBOX_WEBHOOK_TOKEN
+        key: MAILBOX_WEBHOOK_TOKEN
+      - name: MAILBOX_FRPC_CONFIG
+        key: MAILBOX_FRPC_CONFIG
     ports:
       - name: grpc
         containerPort: 50051
+      - name: http-webhook
+        containerPort: 8082
     service:
       enabled: true
       type: ClusterIP
@@ -201,6 +212,9 @@ workloads:
         - name: grpc
           port: 50051
           targetPort: grpc
+        - name: http-webhook
+          port: 8082
+          targetPort: http-webhook
     probes:
       tcpSocketPort: grpc
     resources: {}
