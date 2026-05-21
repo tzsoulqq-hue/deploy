@@ -1,0 +1,10 @@
+{
+  "zones": [
+    {
+      "zoneName": "example.invalid",
+      "enabled": true,
+      "workerName": "cloudflare-email-relay",
+      "catchAllEnabled": true
+    }
+  ]
+}

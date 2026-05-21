@@ -15,9 +15,10 @@ iac/
 
 - `configEnv`：非敏感运行参数，渲染为 ConfigMap。
 - `secrets.stringData`：敏感参数，渲染为 Secret。
+- `cloudflareEmail`：Cloudflare Email Routing 配置，渲染为 mailbox 读取的 proto JSON。
 - `workloads`：每个服务的镜像、端口、探针、挂载和副本数。
 - `ingress`：WebUI、mailbox webhook 和 GoPay OTP webhook 的外部入口。
-- `workloads.ingress-frpc`：面向 ingress-nginx HTTP 入口的可选公网隧道。
+- `workloads.cloudflare-tunnel`：Cloudflare Tunnel 连接器；公网 webhook 入口使用 `CLOUDFLARE_TUNNEL_TOKEN` 连接到 Cloudflare。
 
 Kubernetes 部署中的代理地址使用集群可达的 Service、内网 IP 或 egress proxy。
 

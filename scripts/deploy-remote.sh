@@ -28,8 +28,14 @@ IMPORT_HOST_IP=${IMPORT_HOST_IP:-192.168.122.1}
 IMPORT_HTTP_BIND=${IMPORT_HTTP_BIND:-$IMPORT_HOST_IP}
 IMPORT_HTTP_PORT=${IMPORT_HTTP_PORT:-31888}
 IMPORT_TIMEOUT_SECONDS=${IMPORT_TIMEOUT_SECONDS:-600}
+REMOTE_TAR=${REMOTE_TAR:-/tmp/byte-v-forge-images-${TAG}.tar}
 
-CAMOUFOX_FETCH_PROXY=${CAMOUFOX_FETCH_PROXY:-}
+CAMOUFOX_FETCH_PROXY=${CAMOUFOX_FETCH_PROXY:-http://host.docker.internal:10809}
+BROWSER_AUTOMATION_RUNTIME_IMAGE=${BROWSER_AUTOMATION_RUNTIME_IMAGE:-${IMAGE_PREFIX}/browser-automation-runtime:camoufox-0.4.11-playwright-1.59.0-py3.12-bookworm}
+REBUILD_BROWSER_AUTOMATION_RUNTIME=${REBUILD_BROWSER_AUTOMATION_RUNTIME:-false}
+DEPLOY_REGISTRY_CONTAINER=${DEPLOY_REGISTRY_CONTAINER:-byte-v-forge-deploy-registry}
+DEPLOY_REGISTRY_PUSH_ADDR=${DEPLOY_REGISTRY_PUSH_ADDR:-127.0.0.1:5050}
+DEPLOY_REGISTRY_PULL_ADDR=${DEPLOY_REGISTRY_PULL_ADDR:-${IMPORT_HOST_IP}:30500}
 SKIP_SYNC=${SKIP_SYNC:-false}
 SKIP_BUILD=${SKIP_BUILD:-false}
 SKIP_IMPORT=${SKIP_IMPORT:-false}
@@ -76,7 +82,9 @@ Environment overrides:
   REMOTE_KUBECONFIG, REMOTE_HELM, IMAGE_PREFIX, IMPORT_METHOD, VM_NAME,
   IMPORT_HOST_IP, IMPORT_HTTP_BIND, IMPORT_HTTP_PORT, HELM_TIMEOUT,
   ROLLOUT_TIMEOUT, KEEP_REMOTE_TAR, SOURCE_ROOT, CAMOUFOX_FETCH_PROXY,
-  VALUES_FILE.
+  VALUES_FILE, BROWSER_AUTOMATION_RUNTIME_IMAGE, REBUILD_BROWSER_AUTOMATION_RUNTIME,
+  DEPLOY_REGISTRY_PUSH_ADDR, DEPLOY_REGISTRY_PULL_ADDR. CAMOUFOX_FETCH_PROXY defaults
+  to http://host.docker.internal:10809 for browser-automation runtime builds.
 EOF
 }
 
@@ -111,13 +119,13 @@ valid_service() {
 docker_context() {
   case "$1" in
     gpt-service)
-      printf 'gpt'
+      printf '.'
       ;;
     mailbox)
       printf 'mailbox'
       ;;
     webui)
-      printf 'webui'
+      printf '.'
       ;;
     browser-automation)
       printf 'browser-automation'
@@ -134,7 +142,7 @@ docker_context() {
 dockerfile_path() {
   case "$1" in
     gpt-service)
-      printf 'gpt-service/Dockerfile'
+      printf 'gpt/gpt-service/Dockerfile'
       ;;
     mailbox)
       printf 'Dockerfile'
@@ -149,7 +157,7 @@ dockerfile_path() {
       printf 'Dockerfile'
       ;;
     webui)
-      printf 'Dockerfile'
+      printf 'webui/Dockerfile'
       ;;
     *)
       printf '%s/Dockerfile' "$1"
@@ -184,6 +192,16 @@ sync_one_repo() {
 
 image_ref() {
   printf '%s/%s:%s' "$IMAGE_PREFIX" "$1" "$TAG"
+}
+
+canonical_image_ref() {
+  local image=$1
+  local first_segment=${image%%/*}
+  if [[ "$first_segment" == *.* || "$first_segment" == *:* || "$first_segment" == "localhost" ]]; then
+    printf '%s' "$image"
+    return
+  fi
+  printf 'docker.io/%s' "$image"
 }
 
 parse_args() {
@@ -271,8 +289,8 @@ parse_args() {
   done
 
   case "$IMPORT_METHOD" in
-    auto|sudo|qga) ;;
-    *) die "IMPORT_METHOD must be auto, sudo, or qga" ;;
+    auto|sudo|qga|registry) ;;
+    *) die "IMPORT_METHOD must be auto, sudo, qga, or registry" ;;
   esac
 
   case "$TAG" in
@@ -333,6 +351,40 @@ sync_source() {
   sync_one_repo workflow-runtime "$SOURCE_ROOT/workflow-runtime" "$REMOTE_DIR/workflow-runtime"
 }
 
+sync_dashboard_modules() {
+  local service
+  local needs_webui=false
+  for service in "${SERVICES[@]}"; do
+    if [[ "$service" == "webui" ]]; then
+      needs_webui=true
+      break
+    fi
+  done
+  if [[ "$needs_webui" != "true" ]]; then
+    return
+  fi
+  log "compose dashboard modules into webui build tree"
+  remote "cd $(shell_quote "$REMOTE_DIR") && SOURCE_ROOT=$(shell_quote "$REMOTE_DIR") FRONTEND_MODULES_CONFIG=$(shell_quote "$REMOTE_DIR/frontend-modules.json") ./scripts/sync-dashboard-modules.sh"
+}
+
+ensure_browser_automation_runtime_image() {
+  if [[ "$REBUILD_BROWSER_AUTOMATION_RUNTIME" != "true" ]] && remote "docker image inspect $(shell_quote "$BROWSER_AUTOMATION_RUNTIME_IMAGE") >/dev/null 2>&1"; then
+    log "browser automation runtime image exists: $BROWSER_AUTOMATION_RUNTIME_IMAGE"
+    return
+  fi
+
+  local build_flags=""
+  if [[ -n "$CAMOUFOX_FETCH_PROXY" ]]; then
+    build_flags="--add-host=host.docker.internal:host-gateway --build-arg CAMOUFOX_FETCH_PROXY=$(shell_quote "$CAMOUFOX_FETCH_PROXY")"
+  fi
+  if [[ "$REBUILD_BROWSER_AUTOMATION_RUNTIME" == "true" ]]; then
+    build_flags="$build_flags --no-cache"
+  fi
+
+  log "build browser automation runtime $BROWSER_AUTOMATION_RUNTIME_IMAGE"
+  remote "cd $(shell_quote "$REMOTE_DIR") && docker build $build_flags -t $(shell_quote "$BROWSER_AUTOMATION_RUNTIME_IMAGE") -f browser-automation/Dockerfile.runtime browser-automation"
+}
+
 build_images() {
   if [[ "$SKIP_BUILD" == "true" ]]; then
     log "skip build"
@@ -349,17 +401,20 @@ build_images() {
     fi
     image=$(image_ref "$service")
     build_flags=""
-    if [[ "$service" == "browser-automation" && -n "$CAMOUFOX_FETCH_PROXY" ]]; then
-      build_flags="--add-host=host.docker.internal:host-gateway --build-arg CAMOUFOX_FETCH_PROXY=$(shell_quote "$CAMOUFOX_FETCH_PROXY")"
+    if [[ "$service" == "browser-automation" ]]; then
+      ensure_browser_automation_runtime_image
+      build_flags="--build-arg BROWSER_AUTOMATION_RUNTIME_IMAGE=$(shell_quote "$BROWSER_AUTOMATION_RUNTIME_IMAGE")"
     fi
     log "build $image"
     remote "cd $(shell_quote "$REMOTE_DIR") && docker build $build_flags -t $(shell_quote "$image") -f $(shell_quote "$dockerfile_arg") $(shell_quote "$context")"
   done
 }
 
-save_images() {
-  REMOTE_TAR=/tmp/byte-v-forge-images-${TAG}.tar
+ensure_image_tar() {
   if [[ "$SKIP_BUILD" == "true" || "$SKIP_IMPORT" == "true" ]]; then
+    return
+  fi
+  if remote "test -f $(shell_quote "$REMOTE_TAR")"; then
     return
   fi
 
@@ -376,6 +431,17 @@ save_images() {
 
   log "save image tar on remote: $REMOTE_TAR"
   remote "docker save -o $(shell_quote "$REMOTE_TAR")$quoted_images"
+}
+
+save_images() {
+  case "$IMPORT_METHOD" in
+    auto|registry)
+      log "defer image tar save; registry import will be tried first"
+      ;;
+    sudo|qga)
+      ensure_image_tar
+      ;;
+  esac
 }
 
 import_images_qga() {
@@ -483,6 +549,127 @@ die "guest image import timed out after ${IMPORT_TIMEOUT_SECONDS}s"
 REMOTE_SCRIPT
 }
 
+ensure_deploy_registry() {
+  local push_port pull_host pull_port
+  push_port=${DEPLOY_REGISTRY_PUSH_ADDR##*:}
+  pull_host=${DEPLOY_REGISTRY_PULL_ADDR%:*}
+  pull_port=${DEPLOY_REGISTRY_PULL_ADDR##*:}
+
+  log "ensure deploy registry push=$DEPLOY_REGISTRY_PUSH_ADDR pull=$DEPLOY_REGISTRY_PULL_ADDR"
+  remote "set -e; \
+    if docker inspect $(shell_quote "$DEPLOY_REGISTRY_CONTAINER") >/dev/null 2>&1; then \
+      docker start $(shell_quote "$DEPLOY_REGISTRY_CONTAINER") >/dev/null; \
+    else \
+      docker run -d --restart unless-stopped --name $(shell_quote "$DEPLOY_REGISTRY_CONTAINER") \
+        -p 127.0.0.1:$(shell_quote "$push_port"):5000 \
+        -p $(shell_quote "$pull_host"):$(shell_quote "$pull_port"):5000 \
+        registry:2 >/dev/null; \
+    fi; \
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
+      curl -fsS http://$(shell_quote "$DEPLOY_REGISTRY_PUSH_ADDR")/v2/ >/dev/null && exit 0; \
+      sleep 1; \
+    done; \
+    exit 1"
+}
+
+push_registry_images() {
+  local service image push_ref
+  for service in "${SERVICES[@]}"; do
+    image=$(image_ref "$service")
+    push_ref="${DEPLOY_REGISTRY_PUSH_ADDR}/${image}"
+    log "push registry image $push_ref"
+    remote "docker tag $(shell_quote "$image") $(shell_quote "$push_ref") && docker push $(shell_quote "$push_ref")"
+  done
+}
+
+import_images_registry() {
+  ensure_deploy_registry || return 1
+  push_registry_images || return 1
+
+  local guest_cmd="set -e"
+  local service image canonical pull_ref
+  for service in "${SERVICES[@]}"; do
+    image=$(image_ref "$service")
+    canonical=$(canonical_image_ref "$image")
+    pull_ref="${DEPLOY_REGISTRY_PULL_ADDR}/${image}"
+    guest_cmd="$guest_cmd; k3s ctr -n k8s.io images pull --plain-http $(shell_quote "$pull_ref"); k3s ctr -n k8s.io images tag --force $(shell_quote "$pull_ref") $(shell_quote "$image")"
+    if [[ "$canonical" != "$image" ]]; then
+      guest_cmd="$guest_cmd; k3s ctr -n k8s.io images tag --force $(shell_quote "$pull_ref") $(shell_quote "$canonical")"
+    fi
+  done
+
+  log "import images into k3s via registry"
+  ssh -o ConnectTimeout=5 "$REMOTE_HOST" \
+    "GUEST_CMD=$(shell_quote "$guest_cmd") VM_NAME=$(shell_quote "$VM_NAME") IMPORT_TIMEOUT_SECONDS=$(shell_quote "$IMPORT_TIMEOUT_SECONDS") bash -s" <<'REMOTE_SCRIPT'
+set -Eeuo pipefail
+
+die() {
+  printf '[deploy] error: %s\n' "$*" >&2
+  exit 1
+}
+
+command -v virsh >/dev/null 2>&1 || die "virsh is not available on remote host"
+command -v python3 >/dev/null 2>&1 || die "python3 is not available on remote host"
+
+payload=$(python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "execute": "guest-exec",
+    "arguments": {
+        "path": "/bin/sh",
+        "arg": ["-lc", os.environ["GUEST_CMD"]],
+        "capture-output": True,
+    },
+}))
+PY
+)
+
+start_json=$(virsh qemu-agent-command "$VM_NAME" "$payload")
+guest_pid=$(printf '%s' "$start_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["return"]["pid"])')
+
+for _ in $(seq 1 "$IMPORT_TIMEOUT_SECONDS"); do
+  status_payload=$(PID="$guest_pid" python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "execute": "guest-exec-status",
+    "arguments": {"pid": int(os.environ["PID"])},
+}))
+PY
+)
+  status_json=$(virsh qemu-agent-command "$VM_NAME" "$status_payload")
+  exited=$(printf '%s' "$status_json" | python3 -c 'import json,sys; print("1" if json.load(sys.stdin)["return"].get("exited") else "0")')
+  if [[ "$exited" != "1" ]]; then
+    sleep 1
+    continue
+  fi
+
+  STATUS_JSON="$status_json" python3 - <<'PY'
+import base64
+import json
+import os
+import sys
+
+status = json.loads(os.environ["STATUS_JSON"])["return"]
+for key, stream in (("out-data", sys.stdout), ("err-data", sys.stderr)):
+    value = status.get(key)
+    if value:
+        stream.write(base64.b64decode(value).decode("utf-8", "replace"))
+PY
+  exit_code=$(printf '%s' "$status_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["return"].get("exitcode", 1))')
+  if [[ "$exit_code" != "0" ]]; then
+    die "guest registry image import failed with exit code $exit_code"
+  fi
+  exit 0
+done
+
+die "guest registry image import timed out after ${IMPORT_TIMEOUT_SECONDS}s"
+REMOTE_SCRIPT
+}
+
 import_images() {
   if [[ "$SKIP_IMPORT" == "true" ]]; then
     log "skip import"
@@ -496,17 +683,29 @@ import_images() {
   case "$IMPORT_METHOD" in
     sudo)
       log "import image tar into k3s via sudo k3s ctr"
+      ensure_image_tar
       remote "sudo -n k3s ctr -n k8s.io images import $(shell_quote "$REMOTE_TAR")"
       ;;
     qga)
+      ensure_image_tar
       import_images_qga "$REMOTE_TAR"
+      ;;
+    registry)
+      import_images_registry
       ;;
     auto)
       log "try sudo k3s ctr image import"
-      if remote "sudo -n k3s ctr -n k8s.io images import $(shell_quote "$REMOTE_TAR")"; then
+      if remote "sudo -n true"; then
+        ensure_image_tar
+        remote "sudo -n k3s ctr -n k8s.io images import $(shell_quote "$REMOTE_TAR")"
         return
       fi
-      log "sudo import unavailable; fallback to qemu guest agent"
+      log "sudo import unavailable; try registry import"
+      if import_images_registry; then
+        return
+      fi
+      log "registry import unavailable; fallback to qemu guest agent"
+      ensure_image_tar
       import_images_qga "$REMOTE_TAR"
       ;;
   esac
@@ -645,6 +844,7 @@ main() {
   log "services: ${SERVICES[*]}"
   log "tag: $TAG"
   sync_source
+  sync_dashboard_modules
   build_images
   save_images
   import_images

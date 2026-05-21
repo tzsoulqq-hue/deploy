@@ -4,9 +4,31 @@ global:
   imagePullSecrets: []
 
 configEnv:
-  MAILBOX_CLOUDFLARE_DOMAINS: example.invalid
+  MAILBOX_CLOUDFLARE_MAX_MESSAGES_PER_DOMAIN: "500"
+  MAILBOX_OUTLOOK_MAX_MESSAGES_PER_MAILBOX: "100"
+
+mailboxOutboundWebhooks:
+  - name: gpt-service
+    url: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "gpt-service") }}:8081/webhooks/mailbox/email'
+    tokenEnv: GPT_MAILBOX_WEBHOOK_TOKEN
+    filter:
+      senderDomains:
+        - openai.com
+      recipientDomains:
+        - example.invalid
+    includeBody: true
+    previewLimit: 1000
+
+cloudflareEmail:
+  zones:
+    - zoneName: example.invalid
+      enabled: true
+      workerName: cloudflare-email-relay
+      catchAllEnabled: true
 
 workloads:
+  cloudflare-tunnel:
+    enabled: false
   gpt-service:
     image:
       repository: gpt-service
@@ -31,8 +53,6 @@ workloads:
     image:
       repository: webui
       tag: dev
-  ingress-frpc:
-    enabled: false
 
 ingress:
   webui:
@@ -53,10 +73,6 @@ ingress:
             pathType: Prefix
             component: mailbox
             portName: http-webhook
-          - path: /webhooks/microsoft-graph
-            pathType: Prefix
-            component: mailbox
-            portName: http-webhook
           - path: /
             pathType: Prefix
             component: gpt-service
@@ -66,18 +82,15 @@ secrets:
   stringData:
     POSTGRES_PASSWORD: change-me
     BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
-    INGRESS_FRPC_CONFIG: ""
-    SMS_PROVIDER_API_KEY: ""
-    SMS_HTTP_PROXY: ""
-    GOPAY_PHONE_NUMBER: ""
-    GOPAY_WA_PHONE_NUMBER: ""
-    GOPAY_PIN: ""
+    MAILBOX_WEBHOOK_TOKEN: change-me
+    GPT_MAILBOX_WEBHOOK_TOKEN: change-me
+    MAILBOX_CLOUDFLARE_API_TOKEN: change-me
+    CLOUDFLARE_TUNNEL_TOKEN: change-me
     GOPAY_PROXY_POOL: socks5://proxy.internal:10810,socks5://proxy.internal:10811,socks5://proxy.internal:10813,http://proxy.internal:10814
     GOPAY_CHECKOUT_PROXY_URL: ""
     GOPAY_PAYMENT_PROXY_URL: ""
     GOPAY_HMAC_KEY: ""
     GOPAY_X_E2: ""
-    GOTO_CLIENT_SECRET: ""
     GOTO_SSO_CLIENT_SECRET: ""
     GOPAY_ADD_BALANCE_ENVELOPE_LINK: ""
     GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS: ""

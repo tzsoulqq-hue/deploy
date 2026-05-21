@@ -139,6 +139,13 @@ spec:
             items:
               {{- toYaml . | nindent 14 }}
             {{- end }}
+          {{- else if eq .type "configMap" }}
+          configMap:
+            name: {{ tpl .configMapName $ }}
+            {{- with .items }}
+            items:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
           {{- end }}
         {{- end }}
       {{- end }}

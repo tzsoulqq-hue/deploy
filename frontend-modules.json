@@ -1,0 +1,24 @@
+{
+  "modules": [
+    {
+      "name": "gpt",
+      "source": "gpt/webui/src/dashboard",
+      "target": "gpt"
+    },
+    {
+      "name": "mailbox",
+      "source": "mailbox/webui/src/dashboard",
+      "target": "mailbox"
+    },
+    {
+      "name": "sms",
+      "source": "sms/webui/src/dashboard",
+      "target": "sms"
+    },
+    {
+      "name": "workflow",
+      "source": "workflow-runtime/webui/src/dashboard",
+      "target": "workflow"
+    }
+  ]
+}
