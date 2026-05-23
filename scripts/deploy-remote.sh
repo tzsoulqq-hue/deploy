@@ -46,6 +46,7 @@ KEEP_REMOTE_TAR=${KEEP_REMOTE_TAR:-false}
 ALL_SERVICES=(
   browser-automation
   workflow-runtime
+  proxy-runtime
   webui
   gpt-service
   mailbox
@@ -107,7 +108,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    browser-automation|workflow-runtime|webui|gpt-service|mailbox|sms-service)
+    browser-automation|workflow-runtime|proxy-runtime|webui|gpt-service|mailbox|sms-service)
       return 0
       ;;
     *)
@@ -130,9 +131,12 @@ docker_context() {
     browser-automation)
       printf 'browser-automation'
       ;;
-    workflow-runtime)
-      printf 'workflow-runtime'
-      ;;
+	workflow-runtime)
+	  printf 'workflow-runtime'
+	  ;;
+	proxy-runtime)
+	  printf 'proxy-runtime'
+	  ;;
     sms-service)
       printf 'sms'
       ;;
@@ -153,9 +157,12 @@ dockerfile_path() {
     browser-automation)
       printf 'Dockerfile'
       ;;
-    workflow-runtime)
-      printf 'Dockerfile'
-      ;;
+	workflow-runtime)
+	  printf 'Dockerfile'
+	  ;;
+	proxy-runtime)
+	  printf 'Dockerfile'
+	  ;;
     webui)
       printf 'webui/Dockerfile'
       ;;
@@ -339,6 +346,7 @@ sync_source() {
     --exclude 'webui/' \
     --exclude 'sms/' \
     --exclude 'browser-automation/' \
+    --exclude 'proxy-runtime/' \
     --exclude 'gopay-capture/' \
     --exclude 'gopay-emulator/*.mitm' \
     "$DEPLOY_DIR/" "$REMOTE_HOST:$REMOTE_DIR/"
@@ -349,6 +357,7 @@ sync_source() {
   sync_one_repo sms "$SOURCE_ROOT/sms" "$REMOTE_DIR/sms"
   sync_one_repo browser-automation "$SOURCE_ROOT/browser-automation" "$REMOTE_DIR/browser-automation"
   sync_one_repo workflow-runtime "$SOURCE_ROOT/workflow-runtime" "$REMOTE_DIR/workflow-runtime"
+  sync_one_repo proxy-runtime "$SOURCE_ROOT/proxy-runtime" "$REMOTE_DIR/proxy-runtime"
 }
 
 sync_dashboard_modules() {

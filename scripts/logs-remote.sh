@@ -25,6 +25,7 @@ ALL_SERVICES=(
   gpt-service
   mailbox
   sms-service
+  proxy-runtime
   workflow-runtime
   workflow-runtime-engine
   postgres
@@ -43,7 +44,7 @@ Examples:
   scripts/logs-remote.sh --list-pods all
 
 Services:
-  browser-automation webui gpt-service mailbox sms-service
+  browser-automation webui gpt-service mailbox sms-service proxy-runtime
   workflow-runtime workflow-runtime-engine postgres
 
 Options:
@@ -89,7 +90,7 @@ join_by_comma() {
 
 valid_service() {
   case "$1" in
-    browser-automation|webui|gpt-service|mailbox|sms-service|workflow-runtime|workflow-runtime-engine|postgres)
+    browser-automation|webui|gpt-service|mailbox|sms-service|proxy-runtime|workflow-runtime|workflow-runtime-engine|postgres)
       return 0
       ;;
     *)

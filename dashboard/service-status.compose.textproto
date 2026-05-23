@@ -22,3 +22,9 @@ services {
   target: "http://workflow-runtime:8080/healthz"
   timeout_ms: 1500
 }
+services {
+  name: "proxy-runtime"
+  kind: DASHBOARD_SERVICE_PROBE_HTTP
+  target: "http://proxy-runtime:8080/healthz"
+  timeout_ms: 1500
+}

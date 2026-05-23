@@ -43,6 +43,32 @@ services:
       - workflow-runtime-engine
     restart: always
 
+  proxy-runtime:
+    build:
+      context: ../proxy-runtime
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${PROXY_RUNTIME_HTTP_PORT:-8083}:8080"
+      - "${PROXY_RUNTIME_COMMON_EGRESS_PORT:-10810}:10810"
+      - "${PROXY_RUNTIME_DYNAMIC_EGRESS_PORT:-10811}:10811"
+      - "${PROXY_RUNTIME_CHECKOUT_EGRESS_PORT:-10812}:10812"
+    environment:
+      - PROXY_RUNTIME_ADDR=:8080
+      - PROXY_RUNTIME_LISTENERS_JSON=${PROXY_RUNTIME_LISTENERS_JSON:-[{"id":"direct-egress","addr":":10810","protocol":"socks5","route":"upstream","upstream":"tcp://host.docker.internal:10810"},{"id":"dynamic-provider","addr":":10811","protocol":"socks5","route":"provider"},{"id":"checkout-egress","addr":":10812","protocol":"socks5","route":"upstream","upstream":"tcp://host.docker.internal:10813"}]}
+      - PROXY_RUNTIME_LOCAL_PROTOCOL=socks5
+      - PROXY_RUNTIME_STATIC_CHAIN=${PROXY_RUNTIME_STATIC_CHAIN:-}
+      - PROXY_RUNTIME_PROVIDER=1024proxy
+      - PROXY_RUNTIME_1024_PROXY_ADDR=${PROXY_RUNTIME_1024_PROXY_ADDR:-us.1024proxy.io:3000}
+      - PROXY_RUNTIME_1024_PROTOCOL=socks5
+      - PROXY_RUNTIME_1024_REGION=${PROXY_RUNTIME_1024_REGION:-ID}
+      - PROXY_RUNTIME_1024_USERNAME=${PROXY_RUNTIME_1024_USERNAME:-}
+      - PROXY_RUNTIME_1024_PASSWORD=${PROXY_RUNTIME_1024_PASSWORD:-}
+      - PROXY_RUNTIME_1024_SESSION_ID=${PROXY_RUNTIME_1024_SESSION_ID:-}
+      - PROXY_RUNTIME_1024_STICKY_MINUTES=${PROXY_RUNTIME_1024_STICKY_MINUTES:-5}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+
   browser-automation:
     build:
       context: ../browser-automation
@@ -125,11 +151,13 @@ services:
       - WORKFLOW_RUNTIME_NAMESPACE=${WORKFLOW_RUNTIME_NAMESPACE:-default}
       - WORKFLOW_RUNTIME_TASK_QUEUE=${GPT_WORKFLOW_RUNTIME_TASK_QUEUE:-byte-v-forge-gpt-service}
       - WORKFLOW_RUNTIME_IDENTITY=gpt-service
-      - GOPAY_PROXY_POOL=${GOPAY_PROXY_POOL:-socks5://host.docker.internal:10810,socks5://host.docker.internal:10811,socks5://host.docker.internal:10813,http://host.docker.internal:10814}
-      - GOPAY_CHECKOUT_PROXY_URL=${GOPAY_CHECKOUT_PROXY_URL:-}
-      - GOPAY_PAYMENT_PROXY_URL=${GOPAY_PAYMENT_PROXY_URL:-}
-      - GOPAY_HMAC_KEY=${GOPAY_HMAC_KEY:-}
-      - GOPAY_X_E2=${GOPAY_X_E2:-}
+      - GOPAY_DYNAMIC_EGRESS=${GOPAY_DYNAMIC_EGRESS:-socks5://proxy-runtime:10811}
+      - GOPAY_CHECKOUT_PROXY_URL=${GOPAY_CHECKOUT_PROXY_URL:-socks5://proxy-runtime:10812}
+      - GOPAY_PAYMENT_PROXY_URL=${GOPAY_PAYMENT_PROXY_URL:-socks5://proxy-runtime:10810}
+      - PROXY_RUNTIME_HTTP_ADDR=${PROXY_RUNTIME_HTTP_ADDR:-http://proxy-runtime:8080}
+      - GOPAY_SIGNUP_INITIATE_JITTER_MIN_SECONDS=${GOPAY_SIGNUP_INITIATE_JITTER_MIN_SECONDS:-8}
+      - GOPAY_SIGNUP_INITIATE_JITTER_MAX_SECONDS=${GOPAY_SIGNUP_INITIATE_JITTER_MAX_SECONDS:-25}
+      - GOPAY_SIGNUP_RATE_LIMIT_COOLDOWN_SECONDS=${GOPAY_SIGNUP_RATE_LIMIT_COOLDOWN_SECONDS:-900}
       - GOTO_SSO_CLIENT_SECRET=${GOTO_SSO_CLIENT_SECRET:-}
       - GOPAY_ADD_BALANCE_ENVELOPE_LINK=${GOPAY_ADD_BALANCE_ENVELOPE_LINK:-}
       - GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS=${GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS:-}
@@ -141,6 +169,7 @@ services:
       - mailbox
       - sms-service
       - workflow-runtime
+      - proxy-runtime
     restart: always
 
   sms-service:
@@ -171,6 +200,7 @@ services:
       - GPT_PAYMENT_ADDR=gpt-service:50054
       - MAILBOX_ADDR=mailbox:50051
       - SMS_ADDR=sms-service:50051
+      - PROXY_RUNTIME_HTTP_ADDR=http://proxy-runtime:8080
       - DASHBOARD_SERVICE_STATUS_CONFIG_FILE=/etc/webui/dashboard/service-status.textproto
     volumes:
       - ./dashboard/service-status.compose.textproto:/etc/webui/dashboard/service-status.textproto:ro
@@ -179,6 +209,7 @@ services:
       - mailbox
       - sms-service
       - workflow-runtime
+      - proxy-runtime
     restart: always
 
 volumes:

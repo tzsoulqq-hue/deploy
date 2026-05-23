@@ -45,6 +45,12 @@ spec:
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if hasKey $workload "hostNetwork" }}
+      hostNetwork: {{ $workload.hostNetwork }}
+      {{- end }}
+      {{- with $workload.dnsPolicy }}
+      dnsPolicy: {{ . }}
+      {{- end }}
       containers:
         - name: {{ $component }}
           image: {{ include "byte-v-forge.image" (dict "root" $ "image" $workload.image) | quote }}

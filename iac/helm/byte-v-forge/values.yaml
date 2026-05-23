@@ -45,6 +45,10 @@ dashboard:
         kind: DASHBOARD_SERVICE_PROBE_HTTP
         target: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime") }}:8080/healthz'
         timeoutMs: 1500
+      - name: proxy-runtime
+        kind: DASHBOARD_SERVICE_PROBE_HTTP
+        target: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:8080/healthz'
+        timeoutMs: 1500
 
 mailboxOutboundWebhooks:
   - name: gpt-service
@@ -69,14 +73,16 @@ secrets:
     GPT_MAILBOX_WEBHOOK_TOKEN: ""
     MAILBOX_CLOUDFLARE_API_TOKEN: ""
     CLOUDFLARE_TUNNEL_TOKEN: ""
-    GOPAY_PROXY_POOL: ""
-    GOPAY_CHECKOUT_PROXY_URL: ""
-    GOPAY_PAYMENT_PROXY_URL: ""
-    GOPAY_HMAC_KEY: ""
-    GOPAY_X_E2: ""
+    GOPAY_DYNAMIC_EGRESS: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
+    GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
+    GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
     GOTO_SSO_CLIENT_SECRET: ""
     GOPAY_ADD_BALANCE_ENVELOPE_LINK: ""
     GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS: ""
+    PROXY_RUNTIME_1024_USERNAME: ""
+    PROXY_RUNTIME_1024_PASSWORD: ""
+    PROXY_RUNTIME_1024_SESSION_ID: ""
+    PROXY_RUNTIME_STATIC_CHAIN: ""
 
 postgres:
   enabled: true
@@ -203,6 +209,61 @@ workloads:
         port: health
     resources: {}
 
+  proxy-runtime:
+    enabled: true
+    replicas: 1
+    image:
+      repository: byte-v-forge/proxy-runtime
+      tag: latest
+    env:
+      PROXY_RUNTIME_ADDR: ":8080"
+      PROXY_RUNTIME_LISTENERS_JSON: '[{"id":"direct-egress","addr":":10810","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10810"},{"id":"dynamic-provider","addr":":10811","protocol":"socks5","route":"provider"},{"id":"checkout-egress","addr":":10812","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10813"}]'
+      PROXY_RUNTIME_LOCAL_PROTOCOL: socks5
+      PROXY_RUNTIME_PROVIDER: 1024proxy
+      PROXY_RUNTIME_1024_PROXY_ADDR: us.1024proxy.io:3000
+      PROXY_RUNTIME_1024_PROTOCOL: socks5
+      PROXY_RUNTIME_1024_REGION: ID
+      PROXY_RUNTIME_1024_STICKY_MINUTES: "5"
+    secretEnv:
+      - name: PROXY_RUNTIME_STATIC_CHAIN
+        key: PROXY_RUNTIME_STATIC_CHAIN
+      - name: PROXY_RUNTIME_1024_USERNAME
+        key: PROXY_RUNTIME_1024_USERNAME
+      - name: PROXY_RUNTIME_1024_PASSWORD
+        key: PROXY_RUNTIME_1024_PASSWORD
+      - name: PROXY_RUNTIME_1024_SESSION_ID
+        key: PROXY_RUNTIME_1024_SESSION_ID
+    ports:
+      - name: http
+        containerPort: 8080
+      - name: common-socks
+        containerPort: 10810
+      - name: dynamic-socks
+        containerPort: 10811
+      - name: checkout-socks
+        containerPort: 10812
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: http
+          port: 8080
+          targetPort: http
+        - name: common-socks
+          port: 10810
+          targetPort: common-socks
+        - name: dynamic-socks
+          port: 10811
+          targetPort: dynamic-socks
+        - name: checkout-socks
+          port: 10812
+          targetPort: checkout-socks
+    probes:
+      httpGet:
+        path: /healthz
+        port: http
+    resources: {}
+
   browser-automation:
     enabled: true
     replicas: 1
@@ -323,19 +384,19 @@ workloads:
       WORKFLOW_RUNTIME_NAMESPACE: '{{ .Values.configEnv.WORKFLOW_RUNTIME_NAMESPACE }}'
       WORKFLOW_RUNTIME_TASK_QUEUE: '{{ .Values.configEnv.GPT_WORKFLOW_RUNTIME_TASK_QUEUE }}'
       WORKFLOW_RUNTIME_IDENTITY: gpt-service
+      PROXY_RUNTIME_HTTP_ADDR: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:8080'
+      GOPAY_SIGNUP_INITIATE_JITTER_MIN_SECONDS: "8"
+      GOPAY_SIGNUP_INITIATE_JITTER_MAX_SECONDS: "25"
+      GOPAY_SIGNUP_RATE_LIMIT_COOLDOWN_SECONDS: "900"
     secretEnv:
       - name: GPT_MAILBOX_WEBHOOK_TOKEN
         key: GPT_MAILBOX_WEBHOOK_TOKEN
-      - name: GOPAY_PROXY_POOL
-        key: GOPAY_PROXY_POOL
+      - name: GOPAY_DYNAMIC_EGRESS
+        key: GOPAY_DYNAMIC_EGRESS
       - name: GOPAY_CHECKOUT_PROXY_URL
         key: GOPAY_CHECKOUT_PROXY_URL
       - name: GOPAY_PAYMENT_PROXY_URL
         key: GOPAY_PAYMENT_PROXY_URL
-      - name: GOPAY_HMAC_KEY
-        key: GOPAY_HMAC_KEY
-      - name: GOPAY_X_E2
-        key: GOPAY_X_E2
       - name: GOTO_SSO_CLIENT_SECRET
         key: GOTO_SSO_CLIENT_SECRET
       - name: GOPAY_ADD_BALANCE_ENVELOPE_LINK
@@ -408,6 +469,7 @@ workloads:
       GPT_PAYMENT_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "gpt-service") }}:50054'
       MAILBOX_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "mailbox") }}:50051'
       SMS_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "sms-service") }}:50051'
+      PROXY_RUNTIME_HTTP_ADDR: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:8080'
       DASHBOARD_SERVICE_STATUS_CONFIG_FILE: /etc/webui/dashboard/service-status.textproto
     ports:
       - name: http

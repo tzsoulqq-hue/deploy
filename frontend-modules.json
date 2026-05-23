@@ -19,6 +19,11 @@
       "name": "workflow",
       "source": "workflow-runtime/webui/src/dashboard",
       "target": "workflow"
+    },
+    {
+      "name": "proxy-runtime",
+      "source": "proxy-runtime/webui/src/dashboard",
+      "target": "proxy-runtime"
     }
   ]
 }
