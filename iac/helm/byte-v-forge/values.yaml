@@ -518,6 +518,7 @@ workloads:
     env:
       SMS_LISTEN_ADDR: ":50051"
       SMS_PG_DSN: '{{ include "byte-v-forge.pgDsn" . }}'
+      SMS_PROVIDER_HTTP_PROXY: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
     ports:
       - name: grpc
         containerPort: 50051
