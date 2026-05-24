@@ -78,8 +78,8 @@ secrets:
     MAILBOX_CLOUDFLARE_API_TOKEN: ""
     CLOUDFLARE_TUNNEL_TOKEN: ""
     GOPAY_DYNAMIC_EGRESS: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
-    GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
-    GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
+    GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
+    GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
     CODEX_OAUTH_TOKEN_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
     CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
     GOTO_SSO_CLIENT_SECRET: ""
@@ -224,7 +224,7 @@ workloads:
       tag: latest
     env:
       PROXY_RUNTIME_ADDR: ":8080"
-      PROXY_RUNTIME_LISTENERS_JSON: '[{"id":"direct-egress","addr":":10810","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10810"},{"id":"dynamic-provider","addr":":10811","protocol":"socks5","route":"provider"}]'
+      PROXY_RUNTIME_LISTENERS_JSON: '[{"id":"direct-egress","addr":":10810","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10810"},{"id":"dynamic-provider","addr":":10811","protocol":"socks5","route":"provider"},{"id":"checkout-egress","addr":":10812","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10813"}]'
       PROXY_RUNTIME_LOCAL_PROTOCOL: socks5
       PROXY_RUNTIME_PROVIDER: 1024proxy
       PROXY_RUNTIME_1024_PROXY_ADDR: us.1024proxy.io:3000
@@ -247,6 +247,8 @@ workloads:
         containerPort: 10810
       - name: dynamic-socks
         containerPort: 10811
+      - name: checkout-socks
+        containerPort: 10812
     service:
       enabled: true
       type: ClusterIP
@@ -260,6 +262,9 @@ workloads:
         - name: dynamic-socks
           port: 10811
           targetPort: dynamic-socks
+        - name: checkout-socks
+          port: 10812
+          targetPort: checkout-socks
     probes:
       httpGet:
         path: /healthz
@@ -453,6 +458,7 @@ workloads:
       GOPAY_SIGNUP_INITIATE_JITTER_MIN_SECONDS: "8"
       GOPAY_SIGNUP_INITIATE_JITTER_MAX_SECONDS: "25"
       GOPAY_SIGNUP_RATE_LIMIT_COOLDOWN_SECONDS: "900"
+      GOPAY_BROWSER_FINGERPRINT: chrome_146_windows
     secretEnv:
       - name: GPT_MAILBOX_WEBHOOK_TOKEN
         key: GPT_MAILBOX_WEBHOOK_TOKEN
