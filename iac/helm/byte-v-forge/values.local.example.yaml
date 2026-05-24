@@ -95,8 +95,8 @@ secrets:
     MAILBOX_CLOUDFLARE_API_TOKEN: change-me
     CLOUDFLARE_TUNNEL_TOKEN: change-me
     GOPAY_DYNAMIC_EGRESS: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
-    GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
-    GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
+    GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
+    GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
     CODEX_OAUTH_TOKEN_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
     CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
     GOTO_SSO_CLIENT_SECRET: ""
