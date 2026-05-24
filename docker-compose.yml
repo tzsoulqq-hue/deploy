@@ -170,9 +170,8 @@ services:
       - WORKFLOW_RUNTIME_TASK_QUEUE=${GPT_WORKFLOW_RUNTIME_TASK_QUEUE:-byte-v-forge-gpt-service}
       - WORKFLOW_RUNTIME_IDENTITY=gpt-service
       - GOPAY_DYNAMIC_EGRESS=${GOPAY_DYNAMIC_EGRESS:-socks5://proxy-runtime:10811}
-      - GOPAY_CHECKOUT_PROXY_URL=${GOPAY_CHECKOUT_PROXY_URL:-socks5://proxy-runtime:10812}
-      - GOPAY_PAYMENT_PROXY_URL=${GOPAY_PAYMENT_PROXY_URL:-socks5://proxy-runtime:10810}
-      - GOPAY_BROWSER_FINGERPRINT=${GOPAY_BROWSER_FINGERPRINT:-chrome_146_windows}
+      - 'GOPAY_CHECKOUT_PROFILE_JSON={"name":"checkout","proxy_url":"socks5://proxy-runtime:10812","tls_profile":"chrome_146","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36","sec_ch_ua":"\"Google Chrome\";v=\"146\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"146\"","sec_ch_ua_platform":"\"Windows\"","locale":"en-US","platform":"Windows","pin_locale":"id"}'
+      - 'GOPAY_PAYMENT_PROFILE_JSON={"name":"payment","proxy_url":"socks5://proxy-runtime:10810","tls_profile":"chrome_146","user_agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36","sec_ch_ua":"\"Google Chrome\";v=\"146\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"146\"","sec_ch_ua_platform":"\"Windows\"","locale":"zh-CN","platform":"Windows","pin_locale":"id"}'
       - PROXY_RUNTIME_HTTP_ADDR=${PROXY_RUNTIME_HTTP_ADDR:-http://proxy-runtime:8080}
       - GOPAY_SIGNUP_INITIATE_JITTER_MIN_SECONDS=${GOPAY_SIGNUP_INITIATE_JITTER_MIN_SECONDS:-8}
       - GOPAY_SIGNUP_INITIATE_JITTER_MAX_SECONDS=${GOPAY_SIGNUP_INITIATE_JITTER_MAX_SECONDS:-25}
