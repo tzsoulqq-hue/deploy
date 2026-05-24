@@ -93,8 +93,8 @@ secrets:
     GOPAY_DYNAMIC_EGRESS: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
     GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
     GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
-    CODEX_OAUTH_TOKEN_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
-    CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
+    CODEX_OAUTH_TOKEN_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
+    CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
     GOTO_SSO_CLIENT_SECRET: ""
     GOPAY_ADD_BALANCE_ENVELOPE_LINK: ""
     GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS: ""
