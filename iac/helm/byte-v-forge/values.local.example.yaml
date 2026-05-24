@@ -49,6 +49,10 @@ workloads:
     image:
       repository: proxy-runtime
       tag: dev
+  proxy-runtime-protocol:
+    image:
+      repository: proxy-runtime-protocol
+      tag: dev
   sms-service:
     image:
       repository: sms-service
@@ -85,7 +89,7 @@ ingress:
 secrets:
   stringData:
     POSTGRES_PASSWORD: change-me
-    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10810","outlook":"socks5://proxy.internal:10810"}'
     MAILBOX_WEBHOOK_TOKEN: change-me
     GPT_MAILBOX_WEBHOOK_TOKEN: change-me
     MAILBOX_CLOUDFLARE_API_TOKEN: change-me
@@ -94,11 +98,12 @@ secrets:
     GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
     GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
     CODEX_OAUTH_TOKEN_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
-    CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
+    CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
     GOTO_SSO_CLIENT_SECRET: ""
     GOPAY_ADD_BALANCE_ENVELOPE_LINK: ""
     GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS: ""
     PROXY_RUNTIME_1024_USERNAME: change-me
     PROXY_RUNTIME_1024_PASSWORD: change-me
     PROXY_RUNTIME_1024_SESSION_ID: change-me
+    PROXY_RUNTIME_1024_PROTOCOL_SESSION_ID: change-me
     PROXY_RUNTIME_STATIC_CHAIN: ""

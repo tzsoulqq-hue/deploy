@@ -49,6 +49,10 @@ dashboard:
         kind: DASHBOARD_SERVICE_PROBE_HTTP
         target: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:8080/healthz'
         timeoutMs: 1500
+      - name: proxy-runtime-protocol
+        kind: DASHBOARD_SERVICE_PROBE_HTTP
+        target: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:8080/healthz'
+        timeoutMs: 1500
 
 mailboxOutboundWebhooks:
   - name: gpt-service
@@ -68,7 +72,7 @@ secrets:
   name: ""
   stringData:
     POSTGRES_PASSWORD: byte_v_forge
-    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10810"}'
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10810","outlook":"socks5://proxy.internal:10810"}'
     MAILBOX_WEBHOOK_TOKEN: ""
     GPT_MAILBOX_WEBHOOK_TOKEN: ""
     MAILBOX_CLOUDFLARE_API_TOKEN: ""
@@ -77,13 +81,14 @@ secrets:
     GOPAY_CHECKOUT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10812'
     GOPAY_PAYMENT_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10811'
     CODEX_OAUTH_TOKEN_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
-    CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10810'
+    CODEX_OAUTH_PROTOCOL_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime-protocol") }}:10813'
     GOTO_SSO_CLIENT_SECRET: ""
     GOPAY_ADD_BALANCE_ENVELOPE_LINK: ""
     GOPAY_ADD_BALANCE_TRANSFER_INSTRUCTIONS: ""
     PROXY_RUNTIME_1024_USERNAME: ""
     PROXY_RUNTIME_1024_PASSWORD: ""
     PROXY_RUNTIME_1024_SESSION_ID: ""
+    PROXY_RUNTIME_1024_PROTOCOL_SESSION_ID: ""
     PROXY_RUNTIME_STATIC_CHAIN: ""
 
 postgres:
@@ -260,6 +265,52 @@ workloads:
         - name: checkout-socks
           port: 10812
           targetPort: checkout-socks
+    probes:
+      httpGet:
+        path: /healthz
+        port: http
+    resources: {}
+
+  proxy-runtime-protocol:
+    enabled: true
+    replicas: 1
+    image:
+      repository: byte-v-forge/proxy-runtime-protocol
+      tag: latest
+    env:
+      PROXY_RUNTIME_ADDR: ":8080"
+      PROXY_RUNTIME_LISTENERS_JSON: '[{"id":"codex-protocol-jp-tokyo","addr":":10813","protocol":"socks5","route":"provider","labels":{"purpose":"codex_protocol","region":"JP","city":"Tokyo"}}]'
+      PROXY_RUNTIME_LOCAL_PROTOCOL: socks5
+      PROXY_RUNTIME_PROVIDER: 1024proxy
+      PROXY_RUNTIME_1024_PROXY_ADDR: us.1024proxy.io:3000
+      PROXY_RUNTIME_1024_PROTOCOL: socks5
+      PROXY_RUNTIME_1024_REGION: JP
+      PROXY_RUNTIME_1024_CITY: Tokyo
+      PROXY_RUNTIME_1024_STICKY_MINUTES: "10"
+    secretEnv:
+      - name: PROXY_RUNTIME_STATIC_CHAIN
+        key: PROXY_RUNTIME_STATIC_CHAIN
+      - name: PROXY_RUNTIME_1024_USERNAME
+        key: PROXY_RUNTIME_1024_USERNAME
+      - name: PROXY_RUNTIME_1024_PASSWORD
+        key: PROXY_RUNTIME_1024_PASSWORD
+      - name: PROXY_RUNTIME_1024_SESSION_ID
+        key: PROXY_RUNTIME_1024_PROTOCOL_SESSION_ID
+    ports:
+      - name: http
+        containerPort: 8080
+      - name: protocol-socks
+        containerPort: 10813
+    service:
+      enabled: true
+      type: ClusterIP
+      ports:
+        - name: http
+          port: 8080
+          targetPort: http
+        - name: protocol-socks
+          port: 10813
+          targetPort: protocol-socks
     probes:
       httpGet:
         path: /healthz

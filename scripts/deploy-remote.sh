@@ -47,6 +47,7 @@ ALL_SERVICES=(
   browser-automation
   workflow-runtime
   proxy-runtime
+  proxy-runtime-protocol
   webui
   gpt-service
   mailbox
@@ -108,7 +109,7 @@ remote() {
 
 valid_service() {
   case "$1" in
-    browser-automation|workflow-runtime|proxy-runtime|webui|gpt-service|mailbox|sms-service)
+    browser-automation|workflow-runtime|proxy-runtime|proxy-runtime-protocol|webui|gpt-service|mailbox|sms-service)
       return 0
       ;;
     *)
@@ -137,6 +138,9 @@ docker_context() {
 	proxy-runtime)
 	  printf 'proxy-runtime'
 	  ;;
+	proxy-runtime-protocol)
+	  printf 'proxy-runtime'
+	  ;;
     sms-service)
       printf 'sms'
       ;;
@@ -161,6 +165,9 @@ dockerfile_path() {
 	  printf 'Dockerfile'
 	  ;;
 	proxy-runtime)
+	  printf 'Dockerfile'
+	  ;;
+	proxy-runtime-protocol)
 	  printf 'Dockerfile'
 	  ;;
     webui)
