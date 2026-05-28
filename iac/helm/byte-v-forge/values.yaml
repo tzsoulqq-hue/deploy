@@ -24,6 +24,24 @@ configEnv:
   MAILBOX_WEBHOOK_HTTP_ADDR: ":8082"
   MAILBOX_CLOUDFLARE_MAX_MESSAGES_PER_DOMAIN: "500"
   MAILBOX_OUTLOOK_MAX_MESSAGES_PER_MAILBOX: "100"
+  OUTLOOK_REGISTER_ENABLED: "false"
+  OUTLOOK_REGISTER_MAX_TASKS: "1"
+  OUTLOOK_REGISTER_ENABLE_OAUTH2: "true"
+  OUTLOOK_REGISTER_EMAIL_SUFFIX: "@outlook.com"
+  OUTLOOK_REGISTER_AUTOMATION_PROXY_REF: outlook
+  OUTLOOK_REGISTER_AUTOMATION_LOCALE: en-US
+  OUTLOOK_REGISTER_AUTOMATION_TIMEZONE: ""
+  OUTLOOK_PROXY_URL: 'socks5://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:10814'
+  OUTLOOK_PROXY_RUNTIME_HTTP_ADDR: 'http://{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "proxy-runtime") }}:8080'
+  OUTLOOK_PROXY_REGION: JP
+  OUTLOOK_PROXY_STICKY_MINUTES: "30"
+  OUTLOOK_PROXY_ROTATE_EACH_FETCH: "true"
+  PROXY_RUNTIME_IP_RISK_CHECK_ENABLED: "false"
+  PROXY_RUNTIME_IP_RISK_CHECK_URL: "https://ip.net.coffee/api/ip/lookup/{ip}"
+  PROXY_RUNTIME_IP_RISK_DISCOVER_URLS: "https://ipinfo.io/ip,https://api.ipify.org,https://ifconfig.me/ip"
+  PROXY_RUNTIME_IP_RISK_MAX_ATTEMPTS: "3"
+  PROXY_RUNTIME_IP_RISK_TIMEOUT_SECONDS: "20"
+  PROXY_RUNTIME_IP_RISK_MIN_TRUST_SCORE: "45"
 
 dashboard:
   serviceStatus:
@@ -72,7 +90,7 @@ secrets:
   name: ""
   stringData:
     POSTGRES_PASSWORD: byte_v_forge
-    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10810","outlook":"socks5://proxy.internal:10810"}'
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10814"}'
     MAILBOX_WEBHOOK_TOKEN: ""
     GPT_MAILBOX_WEBHOOK_TOKEN: ""
     MAILBOX_CLOUDFLARE_API_TOKEN: ""
@@ -226,13 +244,19 @@ workloads:
       tag: latest
     env:
       PROXY_RUNTIME_ADDR: ":8080"
-      PROXY_RUNTIME_LISTENERS_JSON: '[{"id":"direct-egress","addr":":10810","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10810"},{"id":"dynamic-provider","addr":":10811","protocol":"socks5","route":"provider"},{"id":"checkout-egress","addr":":10812","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10813"}]'
+      PROXY_RUNTIME_LISTENERS_JSON: '[{"id":"direct-egress","addr":":10810","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10810"},{"id":"codex-provider","addr":":10811","protocol":"socks5","route":"provider"},{"id":"checkout-egress","addr":":10812","protocol":"socks5","route":"upstream","upstream":"tcp://192.168.122.1:10813"},{"id":"outlook-provider","addr":":10814","protocol":"socks5","route":"provider"}]'
       PROXY_RUNTIME_LOCAL_PROTOCOL: socks5
       PROXY_RUNTIME_PROVIDER: 1024proxy
       PROXY_RUNTIME_1024_PROXY_ADDR: us.1024proxy.io:3000
       PROXY_RUNTIME_1024_PROTOCOL: socks5
       PROXY_RUNTIME_1024_REGION: ID
       PROXY_RUNTIME_1024_STICKY_MINUTES: "10"
+      PROXY_RUNTIME_IP_RISK_CHECK_ENABLED: '{{ .Values.configEnv.PROXY_RUNTIME_IP_RISK_CHECK_ENABLED }}'
+      PROXY_RUNTIME_IP_RISK_CHECK_URL: '{{ .Values.configEnv.PROXY_RUNTIME_IP_RISK_CHECK_URL }}'
+      PROXY_RUNTIME_IP_RISK_DISCOVER_URLS: '{{ .Values.configEnv.PROXY_RUNTIME_IP_RISK_DISCOVER_URLS }}'
+      PROXY_RUNTIME_IP_RISK_MAX_ATTEMPTS: '{{ .Values.configEnv.PROXY_RUNTIME_IP_RISK_MAX_ATTEMPTS }}'
+      PROXY_RUNTIME_IP_RISK_TIMEOUT_SECONDS: '{{ .Values.configEnv.PROXY_RUNTIME_IP_RISK_TIMEOUT_SECONDS }}'
+      PROXY_RUNTIME_IP_RISK_MIN_TRUST_SCORE: '{{ .Values.configEnv.PROXY_RUNTIME_IP_RISK_MIN_TRUST_SCORE }}'
     secretEnv:
       - name: PROXY_RUNTIME_STATIC_CHAIN
         key: PROXY_RUNTIME_STATIC_CHAIN
@@ -251,6 +275,8 @@ workloads:
         containerPort: 10811
       - name: checkout-socks
         containerPort: 10812
+      - name: outlook-socks
+        containerPort: 10814
     service:
       enabled: true
       type: ClusterIP
@@ -267,6 +293,9 @@ workloads:
         - name: checkout-socks
           port: 10812
           targetPort: checkout-socks
+        - name: outlook-socks
+          port: 10814
+          targetPort: outlook-socks
     probes:
       httpGet:
         path: /healthz
@@ -375,6 +404,18 @@ workloads:
       MAILBOX_OUTLOOK_MAX_MESSAGES_PER_MAILBOX: '{{ .Values.configEnv.MAILBOX_OUTLOOK_MAX_MESSAGES_PER_MAILBOX }}'
       MAILBOX_PG_DSN: '{{ include "byte-v-forge.pgDsn" . }}'
       BROWSER_AUTOMATION_ADDR: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "browser-automation") }}:50051'
+      OUTLOOK_REGISTER_ENABLED: '{{ .Values.configEnv.OUTLOOK_REGISTER_ENABLED }}'
+      OUTLOOK_REGISTER_MAX_TASKS: '{{ .Values.configEnv.OUTLOOK_REGISTER_MAX_TASKS }}'
+      OUTLOOK_REGISTER_ENABLE_OAUTH2: '{{ .Values.configEnv.OUTLOOK_REGISTER_ENABLE_OAUTH2 }}'
+      OUTLOOK_REGISTER_EMAIL_SUFFIX: '{{ .Values.configEnv.OUTLOOK_REGISTER_EMAIL_SUFFIX }}'
+      OUTLOOK_REGISTER_AUTOMATION_PROXY_REF: '{{ .Values.configEnv.OUTLOOK_REGISTER_AUTOMATION_PROXY_REF }}'
+      OUTLOOK_REGISTER_AUTOMATION_LOCALE: '{{ .Values.configEnv.OUTLOOK_REGISTER_AUTOMATION_LOCALE }}'
+      OUTLOOK_REGISTER_AUTOMATION_TIMEZONE: '{{ .Values.configEnv.OUTLOOK_REGISTER_AUTOMATION_TIMEZONE }}'
+      OUTLOOK_PROXY_URL: '{{ tpl .Values.configEnv.OUTLOOK_PROXY_URL . }}'
+      OUTLOOK_PROXY_RUNTIME_HTTP_ADDR: '{{ tpl .Values.configEnv.OUTLOOK_PROXY_RUNTIME_HTTP_ADDR . }}'
+      OUTLOOK_PROXY_REGION: '{{ .Values.configEnv.OUTLOOK_PROXY_REGION }}'
+      OUTLOOK_PROXY_STICKY_MINUTES: '{{ .Values.configEnv.OUTLOOK_PROXY_STICKY_MINUTES }}'
+      OUTLOOK_PROXY_ROTATE_EACH_FETCH: '{{ .Values.configEnv.OUTLOOK_PROXY_ROTATE_EACH_FETCH }}'
       WORKFLOW_RUNTIME_ADDRESS: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime") }}:7233'
       WORKFLOW_RUNTIME_NAMESPACE: '{{ .Values.configEnv.WORKFLOW_RUNTIME_NAMESPACE }}'
       WORKFLOW_RUNTIME_TASK_QUEUE: '{{ .Values.configEnv.MAILBOX_WORKFLOW_RUNTIME_TASK_QUEUE }}'
@@ -443,14 +484,17 @@ workloads:
       CODEX_OAUTH_PROTOCOL_TLS_PROFILE: chrome_146
       CODEX_OAUTH_PROTOCOL_SESSION_DUMP_ENABLED: "true"
       CODEX_OAUTH_SCOPE: openid profile email offline_access api.connectors.read api.connectors.invoke
-      CODEX_OAUTH_PHONE_PROFILE_KEY: openai-th
+      CODEX_OAUTH_PHONE_PROFILE_KEY: openai-auto
       CODEX_OAUTH_PHONE_MAX_REUSE_COUNT: "3"
       CODEX_OAUTH_PHONE_LABEL: codex-oauth-add-phone
-      CODEX_OAUTH_PHONE_COUNTRY_ISO2: TH
-      CODEX_OAUTH_PHONE_COUNTRY_CALLING_CODE: "66"
-      CODEX_OAUTH_PHONE_MAX_PRICE_USD: "0.068"
+      CODEX_OAUTH_PHONE_COUNTRY_ISO2: ""
+      CODEX_OAUTH_PHONE_COUNTRY_CALLING_CODE: ""
+      CODEX_OAUTH_PHONE_MAX_PRICE_USD: "0.2"
       CODEX_OAUTH_PHONE_WAIT_SECONDS: "120"
-      CODEX_OAUTH_PHONE_MIN_REUSE_REMAINING_SECONDS: "180"
+      CODEX_OAUTH_PHONE_FIRST_WAIT_SECONDS: "120"
+      CODEX_OAUTH_PHONE_RESEND_WAIT_SECONDS: "120"
+      CODEX_OAUTH_PHONE_MIN_REUSE_REMAINING_SECONDS: "300"
+      CODEX_OAUTH_PROTOCOL_PROXY_REGION: JP
       WORKFLOW_RUNTIME_ADDRESS: '{{ include "byte-v-forge.componentFullname" (dict "root" . "component" "workflow-runtime") }}:7233'
       WORKFLOW_RUNTIME_NAMESPACE: '{{ .Values.configEnv.WORKFLOW_RUNTIME_NAMESPACE }}'
       WORKFLOW_RUNTIME_TASK_QUEUE: '{{ .Values.configEnv.GPT_WORKFLOW_RUNTIME_TASK_QUEUE }}'

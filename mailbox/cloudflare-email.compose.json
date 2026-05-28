@@ -1,7 +1,7 @@
 {
   "zones": [
     {
-      "zoneName": "example.invalid",
+      "zoneName": "subforges.com",
       "enabled": true,
       "workerName": "cloudflare-email-relay",
       "catchAllEnabled": true

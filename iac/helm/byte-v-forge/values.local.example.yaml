@@ -91,7 +91,7 @@ ingress:
 secrets:
   stringData:
     POSTGRES_PASSWORD: change-me
-    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10810","outlook":"socks5://proxy.internal:10810"}'
+    BROWSER_AUTOMATION_PROXY_REFS_JSON: '{"register":"socks5://proxy.internal:10813","outlook":"socks5://proxy.internal:10814"}'
     MAILBOX_WEBHOOK_TOKEN: change-me
     GPT_MAILBOX_WEBHOOK_TOKEN: change-me
     MAILBOX_CLOUDFLARE_API_TOKEN: change-me
